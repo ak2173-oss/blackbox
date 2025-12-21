@@ -14,10 +14,12 @@ except ImportError:
 
 # Base paths
 BASE_DIR = Path(__file__).parent
-UPLOAD_FOLDER = BASE_DIR / 'uploads'
-PROJECTS_FOLDER = BASE_DIR / 'projects'
 TEMPLATES_FOLDER = BASE_DIR / 'templates'
 STATIC_FOLDER = BASE_DIR / 'static'
+
+# Allow custom paths from environment variables (for G: drive support)
+UPLOAD_FOLDER = Path(os.getenv('UPLOAD_FOLDER', str(BASE_DIR / 'uploads')))
+PROJECTS_FOLDER = Path(os.getenv('PROJECTS_FOLDER', str(BASE_DIR / 'projects')))
 
 # Flask configuration
 class Config:
