@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload Audio - Transcription Hub v2</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+        .header {
+            background: white; padding: 30px; border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2); margin-bottom: 30px;
+        }
+        .upload-area {
+            background: white; padding: 60px 40px; border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1); text-align: center;
+            border: 3px dashed #ddd; transition: all 0.3s;
+            cursor: pointer;
+        }
+        .upload-area:hover { border-color: #667eea; background: #f8f9fa; }
+        .upload-area.dragover {
+            border-color: #667eea; background: #e7f3ff;
+            transform: scale(1.02);
+        }
+        .upload-icon { font-size: 4em; margin-bottom: 20px; }
+        .file-input { display: none; }
+        .upload-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; padding: 16px 32px;
+            border-radius: 8px; font-size: 1.1em; cursor: pointer;
+            display: inline-block; margin: 20px 0; font-weight: 600;
+            transition: all 0.3s; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        .progress-container {
+            background: white; padding: 30px; border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1); margin-top: 20px; display: none;
+        }
+        .progress-bar {
+            width: 100%; height: 24px; background: #e9ecef;
+            border-radius: 12px; overflow: hidden; margin: 15px 0;
+            position: relative;
+        }
+        .progress-fill {
+            height: 100%; background: linear-gradient(90deg, #667eea 0%, #764ba2 50%, #11998e 100%);
+            transition: width 0.3s ease; width: 0%;
+            position: relative; overflow: hidden;
+        }
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        .progress-percentage {
+            position: absolute; right: 10px; top: 50%;
+            transform: translateY(-50%); color: white;
+            font-weight: 600; font-size: 0.9em; z-index: 1;
+        }
+        .status-details {
+            background: #f8f9fa; padding: 20px; border-radius: 8px;
+            margin: 15px 0; font-family: 'Courier New', monospace; font-size: 0.9em;
+            max-height: 300px; overflow-y: auto; text-align: left;
+            border-left: 4px solid #667eea;
+        }
+        .status-details::-webkit-scrollbar { width: 8px; }
+        .status-details::-webkit-scrollbar-thumb {
+            background: #667eea; border-radius: 4px;
+        }
+        .btn {
+            display: inline-block; padding: 12px 24px;
+            background: #6c757d; color: white; text-decoration: none;
+            border-radius: 8px; margin-right: 10px; font-weight: 600;
+            transition: all 0.3s;
+        }
+        .btn:hover { background: #545b62; transform: translateY(-1px); }
+        .supported-formats {
+            color: #666; font-size: 0.95em; margin-top: 20px;
+            padding: 15px; background: #f8f9fa; border-radius: 8px;
+        }
+        .status-message {
+            font-size: 1.2em; margin: 10px 0; font-weight: 600;
+            color: #333;
+        }
+        .complete-actions {
+            margin-top: 20px; display: none;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+        .elapsed-time {
+            color: #666; font-size: 0.9em; margin-top: 10px;
+        }
+        .step-indicator {
+            display: inline-block; padding: 4px 12px;
+            background: #e7f3ff; color: #0066cc;
+            border-radius: 12px; font-size: 0.85em;
+            margin-bottom: 10px; font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📤 Upload Audio File</h1>
+            <p>Upload your audio file for AI-powered transcription and analysis</p>
+            <a href="/" class="btn">← Back to Projects</a>
+        </div>
+
+        <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+            <div class="upload-icon">🎵</div>
+            <h3 style="margin: 0 0 10px 0; color: #333;">Drop your audio file here</h3>
+            <p style="color: #999; margin: 0 0 20px 0;">or click to browse</p>
+            <div class="upload-btn">
+                Choose Audio File
+            </div>
+            <input type="file" id="fileInput" class="file-input" accept=".mp3,.wav,.m4a,.mp4,.webm,.ogg,.flac,.aac">
+
+            <div class="supported-formats">
+                <strong>✓ Supported formats:</strong> MP3, WAV, M4A, MP4, WebM, OGG, FLAC, AAC<br>
+                <strong>📦 Max size:</strong> 500MB per file<br>
+                <strong>🚀 GPU Acceleration:</strong> Enabled for faster processing
+            </div>
+        </div>
+
+        <div class="progress-container" id="progressContainer">
+            <h3 style="margin-top: 0;">⚡ Processing</h3>
+            <div class="step-indicator" id="stepIndicator">Initializing...</div>
+            <div class="status-message" id="statusMessage">Preparing...</div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill">
+                    <span class="progress-percentage" id="progressPercentage">0%</span>
+                </div>
+            </div>
+            <div class="elapsed-time" id="elapsedTime">⏱️ Elapsed: 0s</div>
+            <div class="status-details" id="statusDetails">Initializing pipeline...</div>
+
+            <div class="complete-actions" id="completeActions">
+                <a href="/" class="btn btn-primary">📂 View All Projects</a>
+                <a href="#" class="btn btn-success" id="viewProjectBtn">👁️ View This Project</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressFill = document.getElementById('progressFill');
+        const progressPercentage = document.getElementById('progressPercentage');
+        const statusMessage = document.getElementById('statusMessage');
+        const statusDetails = document.getElementById('statusDetails');
+        const stepIndicator = document.getElementById('stepIndicator');
+        const elapsedTime = document.getElementById('elapsedTime');
+        const completeActions = document.getElementById('completeActions');
+        const viewProjectBtn = document.getElementById('viewProjectBtn');
+
+        let currentJobId = null;
+        let eventSource = null;
+
+        // Drag and drop functionality
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            // Validate file size
+            const maxSize = 500 * 1024 * 1024; // 500MB
+            if (file.size > maxSize) {
+                alert('File is too large! Maximum size is 500MB.');
+                return;
+            }
+
+            uploadFile(file);
+        }
+
+        function uploadFile(file) {
+            const formData = new FormData();
+            formData.append('audio', file);
+
+            progressContainer.style.display = 'block';
+            uploadArea.style.display = 'none';
+            statusMessage.textContent = `Uploading ${file.name}...`;
+            stepIndicator.textContent = '📤 Uploading';
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    currentJobId = data.job_id;
+                    statusMessage.textContent = 'Upload successful! Processing...';
+                    stepIndicator.textContent = '⚙️ Processing';
+                    startStatusStreaming(data.job_id);
+                } else {
+                    statusMessage.textContent = `Error: ${data.error}`;
+                    statusDetails.innerHTML = data.error;
+                }
+            })
+            .catch(error => {
+                statusMessage.textContent = `Upload failed: ${error}`;
+                statusDetails.innerHTML = `Error: ${error}`;
+            });
+        }
+
+        function startStatusStreaming(jobId) {
+            // Use Server-Sent Events for real-time updates
+            eventSource = new EventSource(`/api/status/stream/${jobId}`);
+
+            eventSource.onmessage = function(event) {
+                try {
+                    const status = JSON.parse(event.data);
+
+                    if (status.error) {
+                        statusMessage.textContent = `Error: ${status.error}`;
+                        eventSource.close();
+                        return;
+                    }
+
+                    // Update progress
+                    progressFill.style.width = status.progress + '%';
+                    progressPercentage.textContent = status.progress + '%';
+                    statusMessage.textContent = status.message;
+                    stepIndicator.textContent = status.step || 'Processing';
+
+                    // Update details
+                    if (status.details && status.details.length > 0) {
+                        statusDetails.innerHTML = status.details.join('<br>');
+                        statusDetails.scrollTop = statusDetails.scrollHeight;
+                    }
+
+                    // Update elapsed time
+                    if (status.elapsed_time) {
+                        elapsedTime.textContent = `⏱️ Elapsed: ${status.elapsed_time}s`;
+                    }
+
+                    // Handle completion
+                    if (status.status === 'complete') {
+                        statusMessage.textContent = '✅ Processing complete!';
+                        stepIndicator.textContent = '✅ Complete';
+                        progressFill.style.width = '100%';
+                        progressPercentage.textContent = '100%';
+                        completeActions.style.display = 'block';
+
+                        if (status.project_name) {
+                            viewProjectBtn.href = `/project/${status.project_name}`;
+                        }
+
+                        eventSource.close();
+                    } else if (status.status === 'error') {
+                        statusMessage.textContent = `❌ Error: ${status.message}`;
+                        stepIndicator.textContent = '❌ Failed';
+                        progressFill.style.background = '#dc3545';
+                        eventSource.close();
+                    }
+                } catch (e) {
+                    console.error('Error parsing status:', e);
+                }
+            };
+
+            eventSource.onerror = function(error) {
+                console.error('EventSource error:', error);
+                eventSource.close();
+                // Fallback to polling
+                startStatusPolling(jobId);
+            };
+        }
+
+        function startStatusPolling(jobId) {
+            const poll = () => {
+                fetch(`/api/status/${jobId}`)
+                .then(response => response.json())
+                .then(status => {
+                    if (status.error) {
+                        statusMessage.textContent = `Error: ${status.error}`;
+                        return;
+                    }
+
+                    progressFill.style.width = status.progress + '%';
+                    progressPercentage.textContent = status.progress + '%';
+                    statusMessage.textContent = status.message;
+                    stepIndicator.textContent = status.step || 'Processing';
+
+                    if (status.details && status.details.length > 0) {
+                        statusDetails.innerHTML = status.details.join('<br>');
+                        statusDetails.scrollTop = statusDetails.scrollHeight;
+                    }
+
+                    if (status.elapsed_time) {
+                        elapsedTime.textContent = `⏱️ Elapsed: ${status.elapsed_time}s`;
+                    }
+
+                    if (status.status === 'complete') {
+                        statusMessage.textContent = '✅ Processing complete!';
+                        stepIndicator.textContent = '✅ Complete';
+                        progressFill.style.width = '100%';
+                        progressPercentage.textContent = '100%';
+                        completeActions.style.display = 'block';
+
+                        if (status.project_name) {
+                            viewProjectBtn.href = `/project/${status.project_name}`;
+                        }
+                    } else if (status.status === 'error') {
+                        statusMessage.textContent = `❌ Error: ${status.message}`;
+                        stepIndicator.textContent = '❌ Failed';
+                        progressFill.style.background = '#dc3545';
+                    } else {
+                        setTimeout(poll, 1000);
+                    }
+                })
+                .catch(error => {
+                    console.error('Status polling error:', error);
+                    setTimeout(poll, 2000);
+                });
+            };
+            poll();
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (eventSource) {
+                eventSource.close();
+            }
+        });
+    </script>
+</body>
+</html>

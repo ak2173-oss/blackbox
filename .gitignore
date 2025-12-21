@@ -1,0 +1,75 @@
+# Audio files (test files)
+*.mp3
+*.wav
+*.m4a
+*.mp4
+*.webm
+*.ogg
+*.flac
+*.aac
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+debug.log
+pipeline.log
+app.log
+*.log.*
+
+# Uploaded and processed files
+uploads/
+projects/
+output/
+debug/
+
+# Temporary files
+temp_*.wav
+*.tmp
+findstr
+
+# Environment variables (contains secrets)
+.env
+
+# Windows shortcuts
+*.lnk
+
+# Test files
+test*.wav
+test*.mp3
+testWhisper.*
+
+# Build artifacts
+*.egg-info/
+dist/
+build/
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pytest
+.pytest_cache/

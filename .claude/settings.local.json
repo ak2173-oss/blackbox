@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(pip install:*)",
+      "Bash(timeout:*)",
+      "Bash(curl:*)",
+      "Bash(cat:*)",
+      "Bash(ollama ps:*)",
+      "Bash(ollama show:*)",
+      "Bash(ollama list:*)",
+      "Bash(nvidia-smi:*)",
+      "Bash(pip uninstall:*)",
+      "Bash(taskkill:*)",
+      "Bash(export OLLAMA_MODEL=phi3:mini-128k)",
+      "Bash(npm start)",
+      "Bash(dir)",
+      "Bash(dir:*)",
+      "Bash(start.bat)",
+      "Bash(stop.bat)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

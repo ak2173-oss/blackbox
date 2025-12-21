@@ -1,0 +1,77 @@
+# Transcription App v2 - Git Ignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
+
+# Environment variables
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Project specific
+uploads/*
+!uploads/.gitkeep
+projects/*
+!projects/.gitkeep
+*.log
+*.wav
+temp_*.wav
+
+# Audio files (don't commit large files)
+*.mp3
+*.m4a
+*.flac
+*.ogg
+*.webm
+*.aac
+
+# Model cache (faster-whisper)
+.cache/
+models/
+
+# Flask
+instance/
+.webassets-cache
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# OS
+Thumbs.db
+.Trash-*
