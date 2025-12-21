@@ -56,6 +56,10 @@ processing_lock = threading.Lock()
 _whisper_model = None
 _model_lock = threading.Lock()
 
+# Ollama preload status
+_ollama_preloaded = False
+_ollama_lock = threading.Lock()
+
 
 def get_whisper_model():
     """Get cached Whisper model, loading if necessary"""
@@ -78,6 +82,39 @@ def get_whisper_model():
                 logger.info("✓ Whisper model loaded and cached")
 
     return _whisper_model
+
+
+def preload_ollama_model():
+    """Preload Phi-3 model into GPU memory on startup"""
+    global _ollama_preloaded
+
+    if _ollama_preloaded:
+        return
+
+    with _ollama_lock:
+        if _ollama_preloaded:  # Double-check locking
+            return
+
+        logger.info(f"Preloading Ollama model: {Config.OLLAMA_MODEL} into GPU...")
+        try:
+            from pipeline import call_ollama
+
+            # Send a simple warm-up prompt to load model into GPU
+            result = call_ollama(
+                Config.OLLAMA_MODEL,
+                "Hello",
+                temperature=0.3
+            )
+
+            if result:
+                _ollama_preloaded = True
+                logger.info(f"✓ Ollama model {Config.OLLAMA_MODEL} preloaded and ready")
+            else:
+                logger.warning("⚠ Ollama model preload failed - will load on first use")
+
+        except Exception as e:
+            logger.warning(f"⚠ Could not preload Ollama model: {e}")
+            logger.info("  Model will load on first transcription request")
 
 
 def sanitize_filename(filename):
@@ -572,6 +609,11 @@ if __name__ == '__main__':
     print(f" Logs: {Config.LOG_FILE}")
     print("\n Tip: The Whisper model is cached in memory for faster processing")
     print(" Tip: Use Server-Sent Events for real-time progress updates")
+
+    # Preload Phi-3 model into GPU for instant AI summaries
+    print("\n⏳ Preloading Phi-3 model into GPU...")
+    preload_ollama_model()
+
     print("\nPress Ctrl+C to stop\n")
 
     app.run(debug=False, port=5000, threaded=True)

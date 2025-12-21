@@ -17,6 +17,55 @@ from config import Config, get_device_config
 
 logger = logging.getLogger(__name__)
 
+# WSL Ollama helper
+def call_ollama(model, prompt, temperature=0.7):
+    """Call Ollama - works in both WSL and native Linux"""
+    import platform
+    import subprocess as sp
+
+    # Check if we're in WSL
+    is_wsl = 'microsoft' in platform.uname().release.lower()
+
+    if is_wsl:
+        # Use Windows Ollama executable directly
+        ollama_exe = "/mnt/c/Users/Agneya/AppData/Local/Programs/Ollama/ollama.exe"
+        if Path(ollama_exe).exists():
+            try:
+                # Call ollama run with the prompt
+                result = sp.run(
+                    [ollama_exe, "run", model, prompt],
+                    capture_output=True,
+                    text=True,
+                    timeout=180
+                )
+                if result.returncode == 0:
+                    return result.stdout.strip()
+                else:
+                    logger.error(f"Ollama error: {result.stderr}")
+                    return None
+            except Exception as e:
+                logger.error(f"Ollama execution error: {e}")
+                return None
+
+    # Fallback to HTTP API
+    try:
+        response = requests.post(
+            f"{Config.OLLAMA_URL}/api/generate",
+            json={
+                "model": model,
+                "prompt": prompt,
+                "stream": False,
+                "options": {"temperature": temperature}
+            },
+            timeout=180
+        )
+        if response.status_code == 200:
+            return response.json()['response']
+    except Exception as e:
+        logger.error(f"Ollama HTTP error: {e}")
+
+    return None
+
 
 class AudioPipeline:
     """Improved audio processing pipeline with GPU support and phi3"""
@@ -66,9 +115,9 @@ class AudioPipeline:
         (self.project_dir / "transcripts").mkdir(exist_ok=True)
         (self.project_dir / "summary").mkdir(exist_ok=True)
 
-        # Copy audio file
+        # Copy audio file (use copy instead of copy2 for G: drive compatibility)
         try:
-            shutil.copy2(self.audio_file, self.project_dir / "audio" / self.audio_file.name)
+            shutil.copy(self.audio_file, self.project_dir / "audio" / self.audio_file.name)
             self.update_status('Folder Creation', 25, 'Project folder created', f"Path: {self.project_dir}")
         except Exception as e:
             logger.error(f"Failed to copy audio file: {e}")
@@ -269,33 +318,20 @@ Respond with ONLY the title, nothing else."""
 
         title = "Untitled"
         try:
-            response = requests.post(
-                f"{Config.OLLAMA_URL}/api/generate",
-                json={
-                    "model": Config.OLLAMA_MODEL,
-                    "prompt": title_prompt,
-                    "stream": False,
-                    "options": {"temperature": 0.3}
-                },
-                timeout=60
-            )
+            response_text = call_ollama(Config.OLLAMA_MODEL, title_prompt, temperature=0.3)
 
-            if response.status_code == 200:
-                title = response.json()['response'].strip()
+            if response_text:
+                title = response_text.strip()
                 title = title.replace('"', '').replace(':', '-')[:50]
                 # Remove special characters for folder name
                 title = ''.join(c for c in title if c.isalnum() or c in ' -_')
                 self.update_status('AI Summary', 85, 'Title generated', f"Title: {title}")
                 logger.info(f"Generated title: {title}")
             else:
-                logger.warning(f"Title generation failed: HTTP {response.status_code}")
+                logger.warning("Title generation failed")
 
             self.log_time("title_generation")
 
-        except requests.exceptions.Timeout:
-            logger.warning("Title generation timed out")
-        except requests.exceptions.ConnectionError:
-            logger.error("Could not connect to Ollama for title generation")
         except Exception as e:
             logger.error(f"Title generation error: {e}")
 
@@ -333,20 +369,9 @@ Create a comprehensive summary using this EXACT format:
 IMPORTANT: Always include direct quotes from the transcript to support each point. Use the exact speaker names from the transcript."""
 
         try:
-            response = requests.post(
-                f"{Config.OLLAMA_URL}/api/generate",
-                json={
-                    "model": Config.OLLAMA_MODEL,
-                    "prompt": summary_prompt,
-                    "stream": False,
-                    "options": {"temperature": Config.OLLAMA_TEMPERATURE}
-                },
-                timeout=Config.OLLAMA_TIMEOUT
-            )
+            summary = call_ollama(Config.OLLAMA_MODEL, summary_prompt, temperature=Config.OLLAMA_TEMPERATURE)
 
-            if response.status_code == 200:
-                summary = response.json()['response']
-
+            if summary:
                 # Save summary
                 summary_dir = self.project_dir / "summary"
                 with open(summary_dir / "summary.txt", "w", encoding="utf-8") as f:
@@ -379,17 +404,10 @@ IMPORTANT: Always include direct quotes from the transcript to support each poin
                     logger.info(f"Renamed to: {new_dir}")
 
                 self.log_time("summary_generation")
-
             else:
-                logger.error(f"Summary generation failed: HTTP {response.status_code}")
+                logger.error("Summary generation failed - no response from Ollama")
                 self.update_status('AI Summary', 95, 'Summary failed', 'Continuing without summary')
 
-        except requests.exceptions.Timeout:
-            logger.error("Summary generation timed out")
-            self.update_status('AI Summary', 95, 'Summary timed out', 'Continuing without summary')
-        except requests.exceptions.ConnectionError:
-            logger.error("Could not connect to Ollama")
-            self.update_status('AI Summary', 95, 'Ollama not available', 'Continuing without summary')
         except Exception as e:
             logger.error(f"Summary error: {e}")
             self.update_status('AI Summary', 95, 'Summary error', str(e))
