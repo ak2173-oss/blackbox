@@ -477,8 +477,18 @@ def ask_question():
             logger.info(f"Using full transcript: {len(transcript):,} characters")
             context_note = f"[Using complete transcript: {len(transcript):,} characters]"
 
+        # Check if it's a greeting or casual message first
+        casual_greetings = ['hello', 'hi', 'hey', 'greetings', 'good morning', 'good afternoon', 'good evening', 'howdy', 'sup', 'yo', 'thanks', 'thank you', 'bye', 'goodbye']
+        question_lower = question.lower().strip()
+
+        if question_lower in casual_greetings or (len(question.split()) <= 3 and any(greeting in question_lower for greeting in casual_greetings)):
+            # Respond to casual greetings
+            return jsonify({
+                'answer': f"Hello! 👋 I'm your transcript analysis assistant. I can help you find information from this conversation.\n\nTry asking questions like:\n• What is this conversation about?\n• Who are the speakers?\n• What decisions were made?\n• What action items were mentioned?\n\nWhat would you like to know?"
+            })
+
         # Create prompt for Qwen2.5 with chain-of-thought reasoning
-        prompt = f"""You are a highly accurate AI assistant analyzing a meeting transcript. You must answer questions ONLY using direct quotes from the transcript as evidence.
+        prompt = f"""You are a highly accurate AI assistant analyzing a meeting transcript. Answer questions using ONLY information from the transcript below.
 
 {context_note}
 
@@ -491,41 +501,21 @@ USER QUESTION: {question}
 
 ===
 
-INSTRUCTIONS - Follow these steps IN ORDER:
+INSTRUCTIONS:
 
-STEP 1 - SEARCH THE TRANSCRIPT:
-Carefully search through the ENTIRE transcript above for ANY information related to the question. Look for:
-- Direct mentions of keywords
-- Related concepts or topics
-- Relevant context or discussions
+1. Search the transcript for information relevant to the question
+2. If found, extract exact quotes with speaker names
+3. Provide a clear answer based on the quotes
+4. If NOT found, respond: "This information is not discussed in the transcript."
 
-STEP 2 - EXTRACT EXACT QUOTES:
-For each relevant piece of information you find, extract the EXACT quote word-for-word from the transcript. Include:
-- The complete quote (no paraphrasing)
-- The speaker who said it
-- Enough context to be meaningful
-
-STEP 3 - VERIFY ACCURACY:
-Double-check that each quote:
-- Is copied EXACTLY from the transcript above
-- Has the correct speaker attribution
-- Is truly relevant to the question
-
-STEP 4 - FORMULATE ANSWER:
-Based ONLY on the quotes you extracted, provide a clear answer. Do not add information not present in the quotes.
-
-===
-
-OUTPUT FORMAT (use this EXACT structure):
+OUTPUT FORMAT:
 
 📎 EVIDENCE FROM TRANSCRIPT:
-• "exact quote 1..." — Speaker Name
-• "exact quote 2..." — Speaker Name
-• "exact quote 3..." — Speaker Name
-[Include ALL relevant quotes you found]
+• "exact quote..." — Speaker Name
+[Only include if relevant quotes exist]
 
 💬 ANSWER:
-[Your answer synthesizing the quotes above. Reference specific speakers. If the information is not in the transcript, clearly state: "This information is not discussed in the transcript."]
+[Clear answer based on evidence, or state it's not in the transcript]
 
 ===
 
