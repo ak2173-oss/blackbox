@@ -323,6 +323,11 @@ def upload():
         if not filename:
             return jsonify({'error': 'Invalid filename'}), 400
 
+        # Get selected transcription engine (default to whisper)
+        engine = request.form.get('engine', 'whisper').lower()
+        if engine not in ['whisper', 'parakeet']:
+            engine = 'whisper'
+
         # Generate job ID
         job_id = generate_job_id(filename)
 
@@ -331,15 +336,16 @@ def upload():
 
         try:
             file.save(str(filepath))
-            logger.info(f"File uploaded: {filename} (job: {job_id})")
+            logger.info(f"File uploaded: {filename} (job: {job_id}, engine: {engine})")
 
             # Initialize job status
-            update_job_status(job_id, 'processing', 'Upload', 10, 'File uploaded, starting processing...', f"File: {filename}")
+            engine_name = "Wav2Vec2" if engine == 'parakeet' else "Whisper"
+            update_job_status(job_id, 'processing', 'Upload', 10, 'File uploaded, starting processing...', f"File: {filename}, Engine: {engine_name}")
 
-            # Process in background thread
+            # Process in background thread with selected engine
             thread = threading.Thread(
                 target=process_audio_background,
-                args=(str(filepath), job_id),
+                args=(str(filepath), job_id, engine),
                 daemon=True
             )
             thread.start()
@@ -351,24 +357,33 @@ def upload():
             update_job_status(job_id, 'error', 'Upload failed', 0, str(e))
             return jsonify({'error': str(e)}), 500
 
-    return render_template('upload.html')
+    # GET method - render upload page with LLM info
+    return render_template('upload.html', llm_model=Config.OLLAMA_MODEL)
 
 
-def process_audio_background(filepath, job_id):
+def process_audio_background(filepath, job_id, engine='whisper'):
     """Process audio using pipeline (runs in background thread)"""
     try:
-        update_job_status(job_id, 'processing', 'Initializing', 15, 'Starting pipeline...')
+        # Temporarily override engine for this job
+        original_engine = Config.TRANSCRIPTION_ENGINE
+        Config.TRANSCRIPTION_ENGINE = engine
 
-        # Create pipeline with cached model
+        engine_name = "Wav2Vec2" if engine == 'parakeet' else "Whisper"
+        update_job_status(job_id, 'processing', 'Initializing', 15, f'Starting pipeline with {engine_name}...')
+
+        # Create pipeline with cached model (only for Whisper)
         pipeline = AudioPipeline(
             audio_file=filepath,
             job_id=job_id,
             status_callback=update_job_status,
-            whisper_model=get_whisper_model()
+            whisper_model=get_whisper_model() if engine == 'whisper' else None
         )
 
         # Run pipeline
         project_dir = pipeline.run()
+
+        # Restore original engine setting
+        Config.TRANSCRIPTION_ENGINE = original_engine
 
         # Extract project name from path
         project_name = Path(project_dir).name
@@ -487,8 +502,10 @@ def ask_question():
                 'answer': f"Hello! 👋 I'm your transcript analysis assistant. I can help you find information from this conversation.\n\nTry asking questions like:\n• What is this conversation about?\n• Who are the speakers?\n• What decisions were made?\n• What action items were mentioned?\n\nWhat would you like to know?"
             })
 
-        # Create prompt for Qwen2.5 with chain-of-thought reasoning
-        prompt = f"""You are a highly accurate AI assistant analyzing a meeting transcript. Answer questions using ONLY information from the transcript below.
+        # Create prompt for Qwen2.5
+        prompt = f"""You are a transcript analysis assistant helping someone analyze a recorded conversation.
+
+IMPORTANT: The user asking questions is NOT one of the speakers in the transcript. They are analyzing this recording.
 
 {context_note}
 
@@ -502,28 +519,15 @@ USER QUESTION: {question}
 ===
 
 INSTRUCTIONS:
+- The user is analyzing this transcript (they are not a participant in the conversation)
+- When answering "what should I do" or "action steps", provide steps for the USER (the analyst), not the speakers
+- Examples for analyst: "Follow up with Speaker X", "Analyze the key themes", "Document the findings", "Compare with other interviews"
+- Examples for meeting transcripts: Extract action items that speakers agreed to do during the meeting
+- Be specific and reference speakers by name/number when helpful
+- Use a clear, conversational tone
+- If information isn't in the transcript, say so
 
-1. Search the transcript for information relevant to the question
-2. If found, extract exact quotes with speaker names
-3. Provide a clear answer based on the quotes
-4. If NOT found, respond: "This information is not discussed in the transcript."
-
-OUTPUT FORMAT:
-
-📎 EVIDENCE FROM TRANSCRIPT:
-• "exact quote..." — Speaker Name
-[Only include if relevant quotes exist]
-
-💬 ANSWER:
-[Clear answer based on evidence, or state it's not in the transcript]
-
-===
-
-CRITICAL RULES:
-- NEVER make up or infer information not in the transcript
-- ALWAYS use exact quotes (not paraphrases)
-- If you're unsure, say so
-- Quality over quantity - be thorough in your search"""
+Provide your answer now:"""
 
         # Send to Ollama
         import requests
@@ -534,9 +538,10 @@ CRITICAL RULES:
                 "prompt": prompt,
                 "stream": False,
                 "options": {
-                    "temperature": 0.3,  # Lower temperature for more focused answers
+                    "temperature": 0.3,
                     "top_p": 0.9,
-                    "top_k": 40
+                    "top_k": 40,
+                    "num_ctx": Config.OLLAMA_CONTEXT_LENGTH
                 }
             },
             timeout=Config.OLLAMA_TIMEOUT
@@ -544,7 +549,45 @@ CRITICAL RULES:
 
         if response.status_code == 200:
             answer = response.json().get('response', 'No response generated')
-            return jsonify({'answer': answer})
+
+            # Always extract relevant quotes from the transcript that were used to generate the answer
+            # Extract keywords from the question (ignore common words)
+            common_words = {'what', 'who', 'where', 'when', 'why', 'how', 'is', 'are', 'was', 'were',
+                          'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of',
+                          'with', 'from', 'about', 'like', 'do', 'does', 'did', 'can', 'could', 'would',
+                          'should', 'me', 'you', 'some', 'give', 'show', 'tell'}
+
+            keywords = [word for word in question_lower.split()
+                       if len(word) > 3 and word not in common_words][:8]
+
+            # Find relevant quotes from transcript
+            quotes_used = []
+            transcript_lines = transcript.split('\n')
+
+            # Score each line by keyword relevance
+            scored_lines = []
+            for line in transcript_lines:
+                if len(line.strip()) < 50:  # Skip very short lines
+                    continue
+
+                line_lower = line.lower()
+                score = sum(1 for kw in keywords if kw in line_lower)
+
+                if score > 0:
+                    scored_lines.append((score, line.strip()))
+
+            # Sort by score and take top 3-5 quotes
+            scored_lines.sort(reverse=True, key=lambda x: x[0])
+            quotes_used = [line for score, line in scored_lines[:5] if score >= 2]
+
+            # If no high-scoring quotes found, take top 3 with any keyword match
+            if not quotes_used and scored_lines:
+                quotes_used = [line for score, line in scored_lines[:3]]
+
+            return jsonify({
+                'answer': answer.strip(),
+                'quotes_used': quotes_used if quotes_used else []
+            })
         else:
             logger.error(f"Ollama error: {response.status_code}")
             return jsonify({'error': 'Could not generate response'}), 500
@@ -602,10 +645,22 @@ if __name__ == '__main__':
     print(" TRANSCRIPTION HUB V2")
     print("=" * 70)
     print(f"\n Server: http://localhost:5000")
-    print(f" Whisper Model: {Config.WHISPER_MODEL} ({device}/{compute_type})")
+
+    # Display transcription engine info
+    if Config.TRANSCRIPTION_ENGINE.lower() == 'parakeet':
+        print(f" Transcription: Wav2Vec2 ({Config.PARAKEET_MODEL})")
+        print(f" Device: {'cuda' if device == 'cuda' else 'cpu'}")
+    else:
+        print(f" Transcription: Whisper {Config.WHISPER_MODEL} ({device}/{compute_type})")
+
     print(f" LLM Model: {Config.OLLAMA_MODEL}")
     print(f" Logs: {Config.LOG_FILE}")
-    print("\n Tip: The Whisper model is cached in memory for faster processing")
+
+    # Display tips based on engine
+    if Config.TRANSCRIPTION_ENGINE.lower() == 'parakeet':
+        print("\n Tip: Wav2Vec2 uses Facebook's model for GPU-accelerated transcription")
+    else:
+        print("\n Tip: The Whisper model is cached in memory for faster processing")
     print(" Tip: Use Server-Sent Events for real-time progress updates")
 
     # Preload Qwen2.5 model into GPU for instant AI summaries

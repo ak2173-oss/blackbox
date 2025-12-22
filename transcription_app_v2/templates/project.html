@@ -109,9 +109,13 @@
             line-height: 1.6;
         }
         .message.assistant .answer-section {
-            margin-top: 12px;
-            line-height: 1.7;
+            line-height: 1.8;
             color: #333;
+            font-size: 0.95em;
+        }
+        .message.assistant .answer-section strong {
+            color: #667eea;
+            font-weight: 600;
         }
         .message.thinking {
             background: #e9ecef; color: #666; font-style: italic;
@@ -272,11 +276,11 @@
                 <div class="section">
                     <h2>💬 Ask Questions</h2>
                     <div class="welcome-message">
-                        <strong>🧠 AI Assistant powered by Phi-3</strong><br><br>
+                        <strong>🧠 AI Assistant powered by Qwen2.5</strong><br><br>
                         Ask me anything about this transcript! I can help you find specific information,
                         summarize key points, or answer questions about the conversation.
                         <br><br>
-                        <small><strong>💡 Tip:</strong> GPU acceleration is enabled for faster responses!</small>
+                        <small><strong>💡 Tip:</strong> GPU acceleration enabled • Context: 8K tokens</small>
                     </div>
 
                     <div class="chat-container">
@@ -363,37 +367,62 @@
             }
         });
 
-        function addMessage(content, type = 'user') {
+        function formatText(text) {
+            // Convert markdown-style formatting to HTML
+            let formatted = text;
+
+            // Bold text (***text*** or **text**)
+            formatted = formatted.replace(/\*\*\*(.*?)\*\*\*/g, '<strong>$1</strong>');
+            formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+            // Convert numbered lists
+            formatted = formatted.replace(/^(\d+)\.\s+\*\*(.*?)\*\*:/gm, '<div style="margin: 12px 0;"><strong>$1. $2:</strong></div>');
+            formatted = formatted.replace(/^(\d+)\.\s+(.*?)$/gm, '<div style="margin: 8px 0; padding-left: 12px;">$1. $2</div>');
+
+            // Convert bullet points (• or -)
+            formatted = formatted.replace(/^[•\-]\s+(.*?)$/gm, '<div style="margin: 6px 0; padding-left: 20px;">• $1</div>');
+
+            // Headers (##)
+            formatted = formatted.replace(/^##\s+(.*?)$/gm, '<div style="font-weight: 600; font-size: 1.1em; margin: 15px 0 8px 0; color: #667eea;">$1</div>');
+
+            // Preserve line breaks
+            formatted = formatted.replace(/\n\n/g, '<br><br>');
+            formatted = formatted.replace(/\n/g, '<br>');
+
+            return formatted;
+        }
+
+        function addMessage(content, type = 'user', quotes = null) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${type}`;
 
             if (type === 'assistant') {
-                // Parse the structured response from the AI
-                const evidenceMatch = content.match(/📎 EVIDENCE FROM TRANSCRIPT:([\s\S]*?)(?=💬 ANSWER:|$)/);
-                const answerMatch = content.match(/💬 ANSWER:([\s\S]*$)/);
+                // Create answer section with formatted text
+                const answerSection = document.createElement('div');
+                answerSection.className = 'answer-section';
+                answerSection.innerHTML = formatText(content);
 
-                if (evidenceMatch && answerMatch) {
-                    // We have structured output - format it nicely
-                    const evidenceText = evidenceMatch[1].trim();
-                    const answerText = answerMatch[1].trim();
+                messageDiv.appendChild(answerSection);
 
-                    // Create collapsible evidence section
+                // Add quotes section if available
+                if (quotes && quotes.length > 0) {
                     const evidenceSection = document.createElement('div');
                     evidenceSection.className = 'evidence-section';
 
                     const evidenceToggle = document.createElement('div');
                     evidenceToggle.className = 'evidence-toggle';
-                    evidenceToggle.innerHTML = '<span>▼</span> <span>📎 Evidence from Transcript</span>';
+                    evidenceToggle.innerHTML = '<span>▼</span> <span>📎 Quotes from Transcript (' + quotes.length + ')</span>';
 
                     const evidenceContent = document.createElement('div');
                     evidenceContent.className = 'evidence-content';
 
-                    // Parse individual quotes
-                    const quotes = evidenceText.split('\n').filter(line => line.trim().startsWith('•'));
                     quotes.forEach(quote => {
                         const quoteItem = document.createElement('div');
                         quoteItem.className = 'quote-item';
-                        quoteItem.textContent = quote.trim();
+                        quoteItem.style.marginBottom = '10px';
+                        quoteItem.style.paddingBottom = '10px';
+                        quoteItem.style.borderBottom = '1px solid #e0e0e0';
+                        quoteItem.textContent = quote;
                         evidenceContent.appendChild(quoteItem);
                     });
 
@@ -406,17 +435,7 @@
 
                     evidenceSection.appendChild(evidenceToggle);
                     evidenceSection.appendChild(evidenceContent);
-
-                    // Create answer section
-                    const answerSection = document.createElement('div');
-                    answerSection.className = 'answer-section';
-                    answerSection.textContent = answerText;
-
                     messageDiv.appendChild(evidenceSection);
-                    messageDiv.appendChild(answerSection);
-                } else {
-                    // Fallback to plain text if not structured
-                    messageDiv.textContent = content;
                 }
             } else {
                 messageDiv.textContent = content;
@@ -476,9 +495,9 @@
                 thinkingMsg.remove();
 
                 if (data.answer) {
-                    addMessage(data.answer, 'assistant');
+                    addMessage(data.answer, 'assistant', data.quotes_used || []);
                 } else {
-                    addMessage('Sorry, I couldn\'t generate a response. Please try again.', 'assistant');
+                    addMessage('Sorry, I couldn\'t generate a response. Please try again.', 'assistant', []);
                 }
             } catch (error) {
                 console.error('Error:', error);

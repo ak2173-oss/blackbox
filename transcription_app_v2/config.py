@@ -31,12 +31,19 @@ class Config:
     UPLOAD_FOLDER = str(UPLOAD_FOLDER)
     PROJECTS_FOLDER = str(PROJECTS_FOLDER)
 
+    # Transcription Engine Selection
+    TRANSCRIPTION_ENGINE = os.getenv('TRANSCRIPTION_ENGINE', 'whisper')  # 'whisper' or 'parakeet'
+
     # Whisper configuration
     WHISPER_MODEL = os.getenv('WHISPER_MODEL', 'base.en')
     WHISPER_DEVICE = os.getenv('WHISPER_DEVICE', 'auto')  # 'auto', 'cuda', or 'cpu'
     WHISPER_COMPUTE_TYPE = os.getenv('WHISPER_COMPUTE_TYPE', 'auto')  # 'auto', 'float16', 'int8'
     WHISPER_CPU_THREADS = int(os.getenv('WHISPER_CPU_THREADS', os.cpu_count() or 4))
     WHISPER_NUM_WORKERS = int(os.getenv('WHISPER_NUM_WORKERS', 4))
+
+    # Parakeet configuration (Alternative fast ASR models)
+    PARAKEET_MODEL = os.getenv('PARAKEET_MODEL', 'facebook/wav2vec2-large-960h-lv60-self')  # HuggingFace model ID
+    PARAKEET_CHUNK_LENGTH = int(os.getenv('PARAKEET_CHUNK_LENGTH', 30))  # seconds per chunk
 
     # Ollama configuration
     OLLAMA_URL = os.getenv('OLLAMA_URL', 'http://localhost:11434')

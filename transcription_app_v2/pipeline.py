@@ -76,8 +76,102 @@ class AudioPipeline:
 
         self.log_time("folder_creation")
 
+    def transcribe_with_parakeet(self):
+        """Transcribe using Wav2Vec2 model (alternative to Whisper)"""
+        self.update_status('Transcription', 30, 'Loading Wav2Vec2 model...', f"Model: {Config.PARAKEET_MODEL}")
+
+        try:
+            import torch
+            import torchaudio
+            from transformers import Wav2Vec2ForCTC, Wav2Vec2Processor
+
+            # Get device
+            device = 'cuda' if torch.cuda.is_available() else 'cpu'
+            self.update_status('Transcription', 35, 'Initializing Wav2Vec2...', f"Device: {device}")
+
+            # Load model and processor
+            processor = Wav2Vec2Processor.from_pretrained(Config.PARAKEET_MODEL)
+            model = Wav2Vec2ForCTC.from_pretrained(Config.PARAKEET_MODEL).to(device)
+            model.eval()
+
+            self.update_status('Transcription', 40, 'Loading audio...', f"File: {self.audio_file.name}")
+
+            # Load audio with torchaudio
+            waveform, sample_rate = torchaudio.load(str(self.audio_file))
+
+            # Resample if needed (Wav2Vec2 expects 16kHz)
+            if sample_rate != 16000:
+                resampler = torchaudio.transforms.Resample(sample_rate, 16000)
+                waveform = resampler(waveform)
+                sample_rate = 16000
+
+            # Convert stereo to mono if needed
+            if waveform.shape[0] > 1:
+                waveform = torch.mean(waveform, dim=0, keepdim=True)
+
+            self.update_status('Transcription', 50, 'Transcribing with Wav2Vec2...', 'Processing audio chunks')
+
+            # Process in chunks to avoid memory issues
+            chunk_length = Config.PARAKEET_CHUNK_LENGTH * sample_rate  # Convert seconds to samples
+            total_samples = waveform.shape[1]
+            results = []
+
+            for start_idx in range(0, total_samples, chunk_length):
+                end_idx = min(start_idx + chunk_length, total_samples)
+                chunk = waveform[:, start_idx:end_idx]
+
+                # Process chunk
+                inputs = processor(chunk.squeeze().numpy(), sampling_rate=sample_rate, return_tensors="pt", padding=True)
+
+                with torch.no_grad():
+                    logits = model(inputs.input_values.to(device)).logits
+
+                # Decode
+                predicted_ids = torch.argmax(logits, dim=-1)
+                transcription = processor.batch_decode(predicted_ids)[0]
+
+                # Calculate timestamps
+                start_time = start_idx / sample_rate
+                end_time = end_idx / sample_rate
+
+                if transcription.strip():
+                    results.append({
+                        "start": round(start_time, 1),
+                        "end": round(end_time, 1),
+                        "text": transcription.strip()
+                    })
+
+                # Update progress
+                progress = 50 + int((end_idx / total_samples) * 20)
+                self.update_status('Transcription', progress, 'Processing chunks...', f"{end_idx}/{total_samples} samples")
+
+            # Save results
+            transcript_dir = self.project_dir / "transcripts"
+            with open(transcript_dir / "transcript.json", "w", encoding="utf-8") as f:
+                json.dump(results, f, indent=2, ensure_ascii=False)
+
+            with open(transcript_dir / "transcript.txt", "w", encoding="utf-8") as f:
+                f.write(" ".join([seg["text"] for seg in results]))
+
+            self.update_status('Transcription', 70, 'Transcription complete', f"Found {len(results)} segments")
+            logger.info(f"Wav2Vec2 transcribed {len(results)} segments")
+            self.log_time("transcription")
+
+            return results
+
+        except ImportError as e:
+            raise Exception(f"Wav2Vec2 dependencies missing. Install: pip install transformers torch torchaudio. Error: {e}")
+        except Exception as e:
+            logger.error(f"Wav2Vec2 transcription error: {e}", exc_info=True)
+            raise Exception(f"Wav2Vec2 transcription failed: {e}")
+
     def transcribe(self):
         """GPU-enabled transcription with better error handling"""
+        # Route to appropriate transcription engine
+        if Config.TRANSCRIPTION_ENGINE.lower() == 'parakeet':
+            return self.transcribe_with_parakeet()
+
+        # Default: Use Whisper
         self.update_status('Transcription', 30, 'Converting audio...', 'Preparing audio for transcription')
 
         # Convert to WAV

@@ -113,6 +113,50 @@
             border-radius: 12px; font-size: 0.85em;
             margin-bottom: 10px; font-weight: 600;
         }
+        .settings-panel {
+            background: white; padding: 30px; border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1); margin-bottom: 20px;
+        }
+        .settings-section {
+            margin-bottom: 25px;
+        }
+        .settings-section h3 {
+            margin: 0 0 15px 0; color: #333; font-size: 1.1em;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .radio-group {
+            display: flex; gap: 20px; flex-wrap: wrap;
+        }
+        .radio-option {
+            display: flex; align-items: center; gap: 8px;
+            padding: 12px 20px; border: 2px solid #e0e0e0;
+            border-radius: 8px; cursor: pointer; transition: all 0.3s;
+            background: white;
+        }
+        .radio-option:hover {
+            border-color: #667eea; background: #f8f9fa;
+        }
+        .radio-option input[type="radio"] {
+            cursor: pointer; width: 18px; height: 18px;
+        }
+        .radio-option input[type="radio"]:checked {
+            accent-color: #667eea;
+        }
+        .radio-option.selected {
+            border-color: #667eea; background: #e7f3ff;
+        }
+        .radio-label {
+            font-weight: 600; color: #333; cursor: pointer;
+        }
+        .radio-description {
+            font-size: 0.85em; color: #666; margin-top: 4px;
+        }
+        .info-badge {
+            display: inline-block; padding: 6px 12px;
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white; border-radius: 6px; font-size: 0.9em;
+            font-weight: 600; margin-left: 10px;
+        }
     </style>
 </head>
 <body>
@@ -121,6 +165,38 @@
             <h1>📤 Upload Audio File</h1>
             <p>Upload your audio file for AI-powered transcription and analysis</p>
             <a href="/" class="btn">← Back to Projects</a>
+        </div>
+
+        <div class="settings-panel">
+            <div class="settings-section">
+                <h3>
+                    🎙️ Transcription Engine
+                    <span class="info-badge">GPU Accelerated</span>
+                </h3>
+                <div class="radio-group">
+                    <label class="radio-option selected" id="whisperOption">
+                        <input type="radio" name="engine" value="whisper" checked id="whisperRadio">
+                        <div>
+                            <div class="radio-label">Whisper</div>
+                            <div class="radio-description">OpenAI Whisper • Best accuracy</div>
+                        </div>
+                    </label>
+                    <label class="radio-option" id="parakeetOption">
+                        <input type="radio" name="engine" value="parakeet" id="parakeetRadio">
+                        <div>
+                            <div class="radio-label">Wav2Vec2</div>
+                            <div class="radio-description">Facebook AI • Fast & GPU optimized</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="settings-section" style="margin-bottom: 0;">
+                <h3>🤖 AI Summarization</h3>
+                <p style="margin: 0; color: #666; font-size: 0.95em;">
+                    Using <strong>{{ llm_model }}</strong> for intelligent conversation analysis
+                </p>
+            </div>
         </div>
 
         <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
@@ -174,6 +250,24 @@
         let currentJobId = null;
         let eventSource = null;
 
+        // Handle radio button selection visual feedback
+        const whisperOption = document.getElementById('whisperOption');
+        const parakeetOption = document.getElementById('parakeetOption');
+        const whisperRadio = document.getElementById('whisperRadio');
+        const parakeetRadio = document.getElementById('parakeetRadio');
+
+        whisperOption.addEventListener('click', () => {
+            whisperRadio.checked = true;
+            whisperOption.classList.add('selected');
+            parakeetOption.classList.remove('selected');
+        });
+
+        parakeetOption.addEventListener('click', () => {
+            parakeetRadio.checked = true;
+            parakeetOption.classList.add('selected');
+            whisperOption.classList.remove('selected');
+        });
+
         // Drag and drop functionality
         uploadArea.addEventListener('dragover', (e) => {
             e.preventDefault();
@@ -213,6 +307,10 @@
         function uploadFile(file) {
             const formData = new FormData();
             formData.append('audio', file);
+
+            // Get selected transcription engine
+            const selectedEngine = document.querySelector('input[name="engine"]:checked').value;
+            formData.append('engine', selectedEngine);
 
             progressContainer.style.display = 'block';
             uploadArea.style.display = 'none';
