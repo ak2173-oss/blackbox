@@ -1,5 +1,5 @@
 # pipeline.py - Improved Audio Processing Pipeline
-# GPU-enabled, better error handling, phi3 integration
+# GPU-enabled, retrieval-based summarization with qwen2.5
 
 import os
 import sys
@@ -17,58 +17,9 @@ from config import Config, get_device_config
 
 logger = logging.getLogger(__name__)
 
-# WSL Ollama helper
-def call_ollama(model, prompt, temperature=0.7):
-    """Call Ollama - works in both WSL and native Linux"""
-    import platform
-    import subprocess as sp
-
-    # Check if we're in WSL
-    is_wsl = 'microsoft' in platform.uname().release.lower()
-
-    if is_wsl:
-        # Use Windows Ollama executable directly
-        ollama_exe = "/mnt/c/Users/Agneya/AppData/Local/Programs/Ollama/ollama.exe"
-        if Path(ollama_exe).exists():
-            try:
-                # Call ollama run with the prompt
-                result = sp.run(
-                    [ollama_exe, "run", model, prompt],
-                    capture_output=True,
-                    text=True,
-                    timeout=180
-                )
-                if result.returncode == 0:
-                    return result.stdout.strip()
-                else:
-                    logger.error(f"Ollama error: {result.stderr}")
-                    return None
-            except Exception as e:
-                logger.error(f"Ollama execution error: {e}")
-                return None
-
-    # Fallback to HTTP API
-    try:
-        response = requests.post(
-            f"{Config.OLLAMA_URL}/api/generate",
-            json={
-                "model": model,
-                "prompt": prompt,
-                "stream": False,
-                "options": {"temperature": temperature}
-            },
-            timeout=180
-        )
-        if response.status_code == 200:
-            return response.json()['response']
-    except Exception as e:
-        logger.error(f"Ollama HTTP error: {e}")
-
-    return None
-
 
 class AudioPipeline:
-    """Improved audio processing pipeline with GPU support and phi3"""
+    """Improved audio processing pipeline with GPU support and qwen2.5:7b-instruct"""
 
     def __init__(self, audio_file, job_id=None, status_callback=None, whisper_model=None):
         self.audio_file = Path(audio_file)
@@ -289,87 +240,146 @@ class AudioPipeline:
 
         return merged
 
+    def _select_key_chunks(self, transcript_with_speakers, max_chunks=10):
+        """Select most important chunks from transcript using retrieval strategy"""
+        # Score segments by importance (length, speaker changes, position)
+        scored_segments = []
+        for i, seg in enumerate(transcript_with_speakers):
+            score = 0
+            # Longer segments are more important
+            score += len(seg['text']) / 10
+            # First and last segments are important
+            if i < 3 or i >= len(transcript_with_speakers) - 3:
+                score += 50
+            # Segments with speaker changes
+            if i > 0 and seg['speaker'] != transcript_with_speakers[i-1]['speaker']:
+                score += 20
+
+            scored_segments.append((score, i, seg))
+
+        # Sort by score and select top-k
+        scored_segments.sort(reverse=True, key=lambda x: x[0])
+        top_segments = sorted(scored_segments[:max_chunks], key=lambda x: x[1])  # Re-sort by original order
+
+        return [seg[2] for seg in top_segments]
+
+    def _format_timestamp(self, seconds):
+        """Convert seconds to MM:SS format"""
+        mins = int(seconds // 60)
+        secs = int(seconds % 60)
+        return f"{mins:02d}:{secs:02d}"
+
+    def _call_ollama_with_fallback(self, prompt, temperature=0.7):
+        """Call Ollama with fallback model support"""
+        models = [Config.OLLAMA_MODEL, Config.OLLAMA_FALLBACK_MODEL]
+
+        for model in models:
+            try:
+                response = requests.post(
+                    f"{Config.OLLAMA_URL}/api/generate",
+                    json={
+                        "model": model,
+                        "prompt": prompt,
+                        "stream": False,
+                        "options": {
+                            "temperature": temperature,
+                            "num_ctx": Config.OLLAMA_CONTEXT_LENGTH
+                        }
+                    },
+                    timeout=Config.OLLAMA_TIMEOUT
+                )
+
+                if response.status_code == 200:
+                    return response.json()['response'], model
+
+            except Exception as e:
+                logger.warning(f"Model {model} failed: {e}")
+                continue
+
+        return None, None
+
     def generate_summary(self, transcript_with_speakers):
-        """Generate summary with Phi-3"""
-        self.update_status('AI Summary', 80, 'Generating summary with Phi-3...', 'Preparing transcript')
+        """Generate summary using retrieval approach with timestamp citations"""
+        self.update_status('AI Summary', 80, 'Generating summary with Qwen2.5...', 'Selecting key segments')
 
-        # Convert to text
-        transcript_text = ""
-        current_speaker = None
-        for seg in transcript_with_speakers:
-            if seg['speaker'] != current_speaker:
-                transcript_text += f"\n\n{seg['speaker']}:\n"
-                current_speaker = seg['speaker']
-            transcript_text += seg['text'] + " "
+        # Select top chunks instead of using entire transcript
+        key_chunks = self._select_key_chunks(transcript_with_speakers, max_chunks=15)
 
-        # Limit context size (phi3 has smaller context window than mistral)
-        max_context = 4000  # characters
-        if len(transcript_text) > max_context:
-            transcript_text = transcript_text[:max_context] + "\n\n[Transcript truncated for summary generation]"
+        # Format chunks with timestamps
+        chunks_text = ""
+        for chunk in key_chunks:
+            timestamp = self._format_timestamp(chunk['start'])
+            chunks_text += f"[{timestamp}] {chunk['speaker']}: {chunk['text']}\n\n"
 
-        # Generate title
-        self.update_status('AI Summary', 82, 'Generating title...', 'Using Phi-3 model')
-        title_prompt = f"""Based on this conversation transcript, generate a short descriptive title (3-6 words maximum).
+        # Generate title from first few chunks
+        self.update_status('AI Summary', 82, 'Generating title...', 'Using retrieval strategy')
+        title_prompt = f"""Based on these key excerpts from a conversation, generate a short descriptive title (3-6 words maximum).
 
-Transcript:
-{transcript_text[:1500]}
+KEY EXCERPTS:
+{chunks_text[:1500]}
 
 Respond with ONLY the title, nothing else."""
 
         title = "Untitled"
         try:
-            response_text = call_ollama(Config.OLLAMA_MODEL, title_prompt, temperature=0.3)
+            response_text, model_used = self._call_ollama_with_fallback(title_prompt, temperature=0.3)
 
             if response_text:
                 title = response_text.strip()
                 title = title.replace('"', '').replace(':', '-')[:50]
                 # Remove special characters for folder name
                 title = ''.join(c for c in title if c.isalnum() or c in ' -_')
-                self.update_status('AI Summary', 85, 'Title generated', f"Title: {title}")
-                logger.info(f"Generated title: {title}")
+                self.update_status('AI Summary', 85, 'Title generated', f"Title: {title} (Model: {model_used})")
+                logger.info(f"Generated title: {title} using {model_used}")
             else:
-                logger.warning("Title generation failed")
+                logger.warning("Title generation failed with all models")
 
             self.log_time("title_generation")
 
         except Exception as e:
             logger.error(f"Title generation error: {e}")
 
-        # Generate summary
-        self.update_status('AI Summary', 87, 'Generating detailed summary...', 'This may take 1-2 minutes')
+        # Generate summary with timestamp citations
+        self.update_status('AI Summary', 87, 'Generating detailed summary...', 'Using retrieval with citations')
 
-        summary_prompt = f"""You are analyzing a meeting transcript. Provide a structured summary with direct quotes as evidence.
+        summary_prompt = f"""You are analyzing a conversation. Below are the most important excerpts with timestamps. Provide a structured summary with timestamp citations.
 
-TRANSCRIPT:
-{transcript_text}
+KEY EXCERPTS:
+{chunks_text}
 
 Create a comprehensive summary using this EXACT format:
 
 ## 📋 OVERVIEW
-[2-3 sentence summary of the meeting]
+[2-3 sentence summary of the conversation]
 
 ## 🔑 KEY POINTS
 • [Main topic 1]
-  Quote: "[relevant quote from transcript]" - [Speaker]
+  Citation: [MM:SS] "[relevant quote]" - [Speaker]
 
 • [Main topic 2]
-  Quote: "[relevant quote from transcript]" - [Speaker]
+  Citation: [MM:SS] "[relevant quote]" - [Speaker]
 
 • [Main topic 3]
-  Quote: "[relevant quote from transcript]" - [Speaker]
+  Citation: [MM:SS] "[relevant quote]" - [Speaker]
 
 ## ✅ ACTION ITEMS & DECISIONS
 • [Action item or decision]
-  Quote: "[supporting quote]" - [Speaker]
+  Citation: [MM:SS] "[supporting quote]" - [Speaker]
 
 ## 👥 PARTICIPANTS
-• [Speaker 0]: [Brief description of their role/contributions based on what they said]
-• [Speaker 1]: [Brief description of their role/contributions based on what they said]
+• [Speaker 0]: [Brief description based on excerpts]
+• [Speaker 1]: [Brief description based on excerpts]
 
-IMPORTANT: Always include direct quotes from the transcript to support each point. Use the exact speaker names from the transcript."""
+IMPORTANT:
+- Include timestamp citations in [MM:SS] format
+- Use direct quotes from the excerpts
+- Reference the exact timestamps provided"""
 
         try:
-            summary = call_ollama(Config.OLLAMA_MODEL, summary_prompt, temperature=Config.OLLAMA_TEMPERATURE)
+            summary, model_used = self._call_ollama_with_fallback(
+                summary_prompt,
+                temperature=Config.OLLAMA_TEMPERATURE
+            )
 
             if summary:
                 # Save summary
@@ -381,7 +391,9 @@ IMPORTANT: Always include direct quotes from the transcript to support each poin
                     json.dump({
                         "title": title,
                         "summary": summary,
-                        "model": Config.OLLAMA_MODEL,
+                        "model": model_used,
+                        "approach": "retrieval_with_citations",
+                        "chunks_used": len(key_chunks),
                         "generated_at": datetime.now().isoformat()
                     }, f, indent=2, ensure_ascii=False)
 

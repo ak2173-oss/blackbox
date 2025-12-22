@@ -85,7 +85,7 @@ def get_whisper_model():
 
 
 def preload_ollama_model():
-    """Preload Phi-3 model into GPU memory on startup"""
+    """Preload Qwen2.5 model into GPU memory on startup"""
     global _ollama_preloaded
 
     if _ollama_preloaded:
@@ -97,16 +97,24 @@ def preload_ollama_model():
 
         logger.info(f"Preloading Ollama model: {Config.OLLAMA_MODEL} into GPU...")
         try:
-            from pipeline import call_ollama
+            import requests
 
             # Send a simple warm-up prompt to load model into GPU
-            result = call_ollama(
-                Config.OLLAMA_MODEL,
-                "Hello",
-                temperature=0.3
+            response = requests.post(
+                f"{Config.OLLAMA_URL}/api/generate",
+                json={
+                    "model": Config.OLLAMA_MODEL,
+                    "prompt": "Hello",
+                    "stream": False,
+                    "options": {
+                        "temperature": 0.3,
+                        "num_ctx": Config.OLLAMA_CONTEXT_LENGTH
+                    }
+                },
+                timeout=60
             )
 
-            if result:
+            if response.status_code == 200:
                 _ollama_preloaded = True
                 logger.info(f"✓ Ollama model {Config.OLLAMA_MODEL} preloaded and ready")
             else:
@@ -433,7 +441,7 @@ def stream_job_status(job_id):
 
 @app.route('/api/ask_question', methods=['POST'])
 def ask_question():
-    """Answer questions about a specific transcript using Phi-3"""
+    """Answer questions about a specific transcript using Qwen2.5"""
     data = request.get_json()
     project_name = data.get('project')
     question = data.get('question')
@@ -455,10 +463,10 @@ def ask_question():
         with open(transcript_file, 'r', encoding='utf-8') as f:
             full_transcript = f.read()
 
-        # Use FULL transcript for maximum accuracy
-        # phi3-mini-128k supports 131k tokens (~400k+ characters)
-        # We'll use up to 100k chars to leave room for prompt and response
-        max_context = 100000
+        # Use retrieval for Q&A based on context length
+        # Qwen2.5:7b-instruct supports 8K context (configurable)
+        # Estimate: 1 token ~= 4 characters, so 8K tokens ~= 32K characters
+        max_context = min(Config.OLLAMA_CONTEXT_LENGTH * 4, 100000)
         transcript = full_transcript[:max_context]
 
         # Log if transcript was truncated
@@ -469,7 +477,7 @@ def ask_question():
             logger.info(f"Using full transcript: {len(transcript):,} characters")
             context_note = f"[Using complete transcript: {len(transcript):,} characters]"
 
-        # Create prompt for Phi-3 with chain-of-thought reasoning
+        # Create prompt for Qwen2.5 with chain-of-thought reasoning
         prompt = f"""You are a highly accurate AI assistant analyzing a meeting transcript. You must answer questions ONLY using direct quotes from the transcript as evidence.
 
 {context_note}
@@ -610,8 +618,8 @@ if __name__ == '__main__':
     print("\n Tip: The Whisper model is cached in memory for faster processing")
     print(" Tip: Use Server-Sent Events for real-time progress updates")
 
-    # Preload Phi-3 model into GPU for instant AI summaries
-    print("\n⏳ Preloading Phi-3 model into GPU...")
+    # Preload Qwen2.5 model into GPU for instant AI summaries
+    print(f"\n⏳ Preloading {Config.OLLAMA_MODEL} into GPU...")
     preload_ollama_model()
 
     print("\nPress Ctrl+C to stop\n")
