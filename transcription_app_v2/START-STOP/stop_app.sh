@@ -7,25 +7,51 @@ echo "================================================================"
 echo ""
 
 echo "🛑 Stopping Ollama server..."
-pkill -f "ollama serve" 2>/dev/null && echo "✓ Ollama stopped" || echo "  (Ollama was not running)"
+pkill -f "ollama serve" 2>/dev/null && echo "  Sent stop signal..." || echo "  (Ollama was not running)"
 
 echo "🛑 Stopping Flask application..."
-pkill -f "python.*app.py" 2>/dev/null && echo "✓ Flask stopped" || echo "  (Flask was not running)"
+pkill -f "python.*app.py" 2>/dev/null && echo "  Sent stop signal..." || echo "  (Flask was not running)"
 
-sleep 1
+sleep 2
 
-# Check if any processes are still running
-if pgrep -f "ollama serve" > /dev/null || pgrep -f "python.*app.py" > /dev/null; then
-    echo ""
-    echo "⚠️  Some processes are still running. Force stopping..."
+# Verify processes stopped
+echo ""
+echo "🔍 Verifying shutdown..."
+
+ollama_running=$(pgrep -f "ollama serve" | wc -l)
+flask_running=$(pgrep -f "python.*app.py" | wc -l)
+
+if [ "$ollama_running" -gt 0 ] || [ "$flask_running" -gt 0 ]; then
+    echo "⚠️  Some processes did not stop gracefully. Force stopping..."
     pkill -9 -f "ollama serve" 2>/dev/null
     pkill -9 -f "python.*app.py" 2>/dev/null
-    sleep 1
-    echo "✓ Force stopped all processes"
+    sleep 2
+
+    # Verify again after force kill
+    ollama_running=$(pgrep -f "ollama serve" | wc -l)
+    flask_running=$(pgrep -f "python.*app.py" | wc -l)
+fi
+
+# Final verification report
+echo ""
+if [ "$ollama_running" -eq 0 ] && [ "$flask_running" -eq 0 ]; then
+    echo "✅ VERIFIED: All processes stopped successfully"
+    echo "   - Ollama: ✓ Stopped"
+    echo "   - Flask:  ✓ Stopped"
+    exit_code=0
+else
+    echo "❌ ERROR: Some processes are still running!"
+    if [ "$ollama_running" -gt 0 ]; then
+        echo "   - Ollama: ✗ Still running ($ollama_running process(es))"
+    fi
+    if [ "$flask_running" -gt 0 ]; then
+        echo "   - Flask:  ✗ Still running ($flask_running process(es))"
+    fi
+    echo ""
+    echo "Try running: sudo pkill -9 ollama && sudo pkill -9 python"
+    exit_code=1
 fi
 
 echo ""
 echo "================================================================"
-echo " All services have been stopped"
-echo "================================================================"
-echo ""
+exit $exit_code

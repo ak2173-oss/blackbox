@@ -9,12 +9,8 @@ echo.
 echo Stopping all processes...
 echo.
 
-REM Stop processes in WSL
-wsl -d Ubuntu bash -c "pkill -f 'ollama serve' 2>/dev/null; pkill -f 'python.*app.py' 2>/dev/null; echo '✓ All processes stopped'"
+REM Run the stop script in WSL with full verification
+wsl -d Ubuntu bash -c "cd /mnt/c/Users/Agneya/Dev/blackbox/transcription_app_v2/START-STOP && ./stop_app.sh"
 
-echo.
-echo ================================================================
-echo  All services have been stopped
-echo ================================================================
 echo.
 pause
