@@ -125,6 +125,44 @@ def preload_ollama_model():
             logger.info("  Model will load on first transcription request")
 
 
+def unload_ollama_from_gpu():
+    """Unload Ollama model from GPU to free VRAM for larger Whisper models"""
+    global _ollama_preloaded
+
+    logger.info(f"Unloading {Config.OLLAMA_MODEL} from GPU to free memory...")
+    try:
+        import requests
+
+        # Unload model by setting keep_alive to 0
+        response = requests.post(
+            f"{Config.OLLAMA_URL}/api/generate",
+            json={
+                "model": Config.OLLAMA_MODEL,
+                "prompt": "",
+                "keep_alive": 0  # Unload immediately
+            },
+            timeout=10
+        )
+
+        if response.status_code == 200:
+            _ollama_preloaded = False
+            logger.info("✓ Ollama model unloaded from GPU (~5GB VRAM freed)")
+            return True
+        else:
+            logger.warning(f"⚠ Ollama unload returned status {response.status_code}")
+            return False
+
+    except Exception as e:
+        logger.warning(f"⚠ Could not unload Ollama model: {e}")
+        return False
+
+
+def reload_ollama_to_gpu():
+    """Reload Ollama model to GPU after transcription"""
+    logger.info(f"Reloading {Config.OLLAMA_MODEL} to GPU...")
+    preload_ollama_model()
+
+
 def sanitize_filename(filename):
     """Sanitize uploaded filename to prevent path traversal attacks"""
     # Remove path components
@@ -328,6 +366,15 @@ def upload():
         if engine not in ['whisper', 'parakeet']:
             engine = 'whisper'
 
+        # Get selected Whisper model size (if using Whisper)
+        whisper_model = None
+        if engine == 'whisper':
+            whisper_model = request.form.get('whisper_model', Config.WHISPER_MODEL)
+            # Validate whisper model
+            valid_models = ['tiny.en', 'base.en', 'small.en', 'medium.en', 'large-v2']
+            if whisper_model not in valid_models:
+                whisper_model = Config.WHISPER_MODEL
+
         # Generate job ID
         job_id = generate_job_id(filename)
 
@@ -336,16 +383,19 @@ def upload():
 
         try:
             file.save(str(filepath))
-            logger.info(f"File uploaded: {filename} (job: {job_id}, engine: {engine})")
+            logger.info(f"File uploaded: {filename} (job: {job_id}, engine: {engine}, whisper_model: {whisper_model})")
 
             # Initialize job status
-            engine_name = "Wav2Vec2" if engine == 'parakeet' else "Whisper"
+            if engine == 'whisper':
+                engine_name = f"Whisper ({whisper_model})"
+            else:
+                engine_name = "Wav2Vec2"
             update_job_status(job_id, 'processing', 'Upload', 10, 'File uploaded, starting processing...', f"File: {filename}, Engine: {engine_name}")
 
-            # Process in background thread with selected engine
+            # Process in background thread with selected engine and model
             thread = threading.Thread(
                 target=process_audio_background,
-                args=(str(filepath), job_id, engine),
+                args=(str(filepath), job_id, engine, whisper_model),
                 daemon=True
             )
             thread.start()
@@ -361,29 +411,58 @@ def upload():
     return render_template('upload.html', llm_model=Config.OLLAMA_MODEL)
 
 
-def process_audio_background(filepath, job_id, engine='whisper'):
+def process_audio_background(filepath, job_id, engine='whisper', whisper_model=None):
     """Process audio using pipeline (runs in background thread)"""
     try:
         # Temporarily override engine for this job
         original_engine = Config.TRANSCRIPTION_ENGINE
-        Config.TRANSCRIPTION_ENGINE = engine
+        original_whisper_model = Config.WHISPER_MODEL
 
-        engine_name = "Wav2Vec2" if engine == 'parakeet' else "Whisper"
+        Config.TRANSCRIPTION_ENGINE = engine
+        if whisper_model:
+            Config.WHISPER_MODEL = whisper_model
+
+        engine_name = "Wav2Vec2" if engine == 'parakeet' else f"Whisper ({whisper_model or Config.WHISPER_MODEL})"
         update_job_status(job_id, 'processing', 'Initializing', 15, f'Starting pipeline with {engine_name}...')
 
-        # Create pipeline with cached model (only for Whisper)
+        # Check if we need to unload Ollama for larger Whisper models
+        MODELS_REQUIRING_UNLOAD = ['small.en', 'medium.en', 'large-v2']
+        needs_unload = engine == 'whisper' and whisper_model in MODELS_REQUIRING_UNLOAD
+
+        if needs_unload:
+            update_job_status(
+                job_id, 'processing', 'Memory Management', 18,
+                '⏳ Unloading LLM to free GPU memory for larger Whisper model...',
+                f'Temporarily unloading {Config.OLLAMA_MODEL} to free ~5GB VRAM'
+            )
+            unload_ollama_from_gpu()
+
+        # Create pipeline with cached model (only for Whisper with default model)
+        # For custom model sizes, we'll load them in the pipeline
+        use_cached_model = engine == 'whisper' and (whisper_model == original_whisper_model or whisper_model is None)
+
         pipeline = AudioPipeline(
             audio_file=filepath,
             job_id=job_id,
             status_callback=update_job_status,
-            whisper_model=get_whisper_model() if engine == 'whisper' else None
+            whisper_model=get_whisper_model() if use_cached_model else None
         )
 
         # Run pipeline
         project_dir = pipeline.run()
 
-        # Restore original engine setting
+        # Reload Ollama if we unloaded it
+        if needs_unload:
+            update_job_status(
+                job_id, 'processing', 'Memory Management', 95,
+                '⏳ Reloading LLM for chat and summarization...',
+                f'Loading {Config.OLLAMA_MODEL} back into GPU memory'
+            )
+            reload_ollama_to_gpu()
+
+        # Restore original settings
         Config.TRANSCRIPTION_ENGINE = original_engine
+        Config.WHISPER_MODEL = original_whisper_model
 
         # Extract project name from path
         project_name = Path(project_dir).name

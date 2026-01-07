@@ -189,6 +189,22 @@
                         </div>
                     </label>
                 </div>
+
+                <!-- Whisper Model Size Selector (shown only when Whisper is selected) -->
+                <div id="whisperModelSection" style="margin-top: 20px;">
+                    <label for="whisperModelSelect" style="display: block; font-weight: 600; color: #333; margin-bottom: 8px;">
+                        Whisper Model Size:
+                    </label>
+                    <select id="whisperModelSelect" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 0.95em; cursor: pointer;">
+                        <option value="tiny.en">tiny.en - Fastest, lower accuracy (~1GB VRAM)</option>
+                        <option value="base.en" selected>base.en - Recommended: Fast & accurate (~1GB VRAM)</option>
+                        <option value="small.en">small.en - Better accuracy (~2GB VRAM) ⚠️ Unloads LLM</option>
+                        <option value="medium.en">medium.en - Best accuracy (~5GB VRAM) ⚠️ Unloads LLM</option>
+                    </select>
+                    <p style="margin: 8px 0 0 0; color: #666; font-size: 0.85em;">
+                        <strong>⚠️ Note:</strong> Models marked with ⚠️ will temporarily unload the chatbot LLM during transcription to free GPU memory.
+                    </p>
+                </div>
             </div>
 
             <div class="settings-section" style="margin-bottom: 0;">
@@ -256,16 +272,20 @@
         const whisperRadio = document.getElementById('whisperRadio');
         const parakeetRadio = document.getElementById('parakeetRadio');
 
+        const whisperModelSection = document.getElementById('whisperModelSection');
+
         whisperOption.addEventListener('click', () => {
             whisperRadio.checked = true;
             whisperOption.classList.add('selected');
             parakeetOption.classList.remove('selected');
+            whisperModelSection.style.display = 'block';
         });
 
         parakeetOption.addEventListener('click', () => {
             parakeetRadio.checked = true;
             parakeetOption.classList.add('selected');
             whisperOption.classList.remove('selected');
+            whisperModelSection.style.display = 'none';
         });
 
         // Drag and drop functionality
@@ -311,6 +331,12 @@
             // Get selected transcription engine
             const selectedEngine = document.querySelector('input[name="engine"]:checked').value;
             formData.append('engine', selectedEngine);
+
+            // Get selected Whisper model size (if Whisper is selected)
+            if (selectedEngine === 'whisper') {
+                const whisperModel = document.getElementById('whisperModelSelect').value;
+                formData.append('whisper_model', whisperModel);
+            }
 
             progressContainer.style.display = 'block';
             uploadArea.style.display = 'none';
