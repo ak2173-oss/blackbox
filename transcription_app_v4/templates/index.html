@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlackBox - All Projects</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        accent: {
+                            50: '#F9FAFB',
+                            100: '#F3F4F6',
+                            500: '#1F2937',
+                            600: '#111827',
+                            700: '#030712',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #E5E5E5; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #D1D1D1; }
+
+        /* Smooth transitions */
+        .nav-item { transition: all 0.15s ease; }
+        .table-row { transition: background-color 0.15s ease; }
+    </style>
+</head>
+<body class="bg-white text-gray-900 font-sans antialiased">
+    <div class="flex h-screen overflow-hidden">
+
+        <!-- Sidebar -->
+        <aside class="w-60 bg-gray-50 border-r border-gray-200 flex flex-col flex-shrink-0">
+
+            <!-- Logo & User -->
+            <div class="p-4 border-b border-gray-200">
+                <div class="flex items-center gap-2 mb-3">
+                    <div class="w-8 h-8 bg-accent-500 rounded-lg flex items-center justify-center">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+                        </svg>
+                    </div>
+                    <span class="font-semibold text-lg">BlackBox</span>
+                </div>
+                <button class="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900">
+                    <div class="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center text-xs font-medium">U</div>
+                    <span>User</span>
+                    <svg class="w-4 h-4 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Upload Button -->
+            <div class="p-4">
+                <a href="/upload" class="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-accent-500 hover:bg-accent-600 text-white rounded-lg font-medium text-sm transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Upload Audio
+                </a>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="px-3 flex-1 overflow-y-auto">
+                <!-- Search -->
+                <div class="relative mb-2">
+                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                    <input
+                        type="text"
+                        id="searchInput"
+                        placeholder="Search projects..."
+                        class="w-full pl-9 pr-3 py-2 text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent"
+                        onkeyup="filterProjects()"
+                    >
+                </div>
+
+                <!-- Main Nav -->
+                <div class="space-y-1 mb-4">
+                    <a href="/" class="nav-item flex items-center gap-3 px-3 py-2 text-sm font-medium text-accent-600 bg-accent-50 rounded-lg">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                        </svg>
+                        Home
+                    </a>
+                    <a href="/health" class="nav-item flex items-center gap-3 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        System Status
+                    </a>
+                </div>
+
+                <!-- Divider -->
+                <div class="border-t border-gray-200 my-3"></div>
+
+                <!-- File Categories -->
+                <div class="mb-2">
+                    <span class="px-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Library</span>
+                </div>
+                <div class="space-y-1">
+                    <a href="/" class="nav-item flex items-center justify-between px-3 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg">
+                        <div class="flex items-center gap-3">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                            </svg>
+                            All Projects
+                        </div>
+                        <span class="text-xs text-gray-400">{{ projects|length if projects else 0 }}</span>
+                    </a>
+                    <a href="#" class="nav-item flex items-center justify-between px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg" onclick="filterByStatus('complete'); return false;">
+                        <div class="flex items-center gap-3">
+                            <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            Complete
+                        </div>
+                        <span class="text-xs text-gray-400">{{ projects|selectattr('has_summary')|list|length if projects else 0 }}</span>
+                    </a>
+                    <a href="#" class="nav-item flex items-center justify-between px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg" onclick="filterByStatus('transcribed'); return false;">
+                        <div class="flex items-center gap-3">
+                            <svg class="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                            </svg>
+                            Transcribed
+                        </div>
+                        <span class="text-xs text-gray-400">{{ projects|selectattr('has_transcript')|list|length if projects else 0 }}</span>
+                    </a>
+                </div>
+
+                <!-- Projects List -->
+                {% if projects %}
+                <div class="border-t border-gray-200 my-3"></div>
+                <div class="mb-2">
+                    <span class="px-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Recent</span>
+                </div>
+                <div class="space-y-1 pb-4">
+                    {% for project in projects[:10] %}
+                    <a href="/project/{{ project.name }}" class="nav-item flex items-center gap-3 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg group">
+                        <div class="w-1.5 h-1.5 rounded-full {% if project.has_summary %}bg-green-500{% elif project.has_transcript %}bg-yellow-500{% else %}bg-gray-300{% endif %}"></div>
+                        <span class="truncate flex-1">{{ project.name.replace('_', ' ')[:30] }}{% if project.name|length > 30 %}...{% endif %}</span>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </nav>
+
+            <!-- Footer -->
+            <div class="p-4 border-t border-gray-200">
+                <div class="text-xs text-gray-400 mb-1">BlackBox v4.0</div>
+                <div class="text-xs text-gray-400">GPU-Accelerated Transcription</div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto">
+            <div class="p-8">
+                <!-- Header -->
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h1 class="text-2xl font-semibold text-gray-900">All Projects</h1>
+                        <p class="text-sm text-gray-500 mt-1">{{ projects|length if projects else 0 }} recordings</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <!-- Device Status Indicator -->
+                        <div id="deviceIndicator" class="hidden flex items-center gap-2 px-3 py-2 bg-green-50 text-green-700 rounded-lg text-sm">
+                            <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                            <span>Recorder Connected</span>
+                        </div>
+                        <!-- Scan Button -->
+                        <button onclick="manualScan()" id="scanBtn" class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                            </svg>
+                            <span id="scanBtnText">Scan for Device</span>
+                        </button>
+                    </div>
+                </div>
+
+                {% if projects %}
+                <!-- Table -->
+                <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-gray-200 bg-gray-50">
+                                <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                                <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                <th class="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100" id="projectsTable">
+                            {% for project in projects %}
+                            <tr class="table-row hover:bg-gray-50 cursor-pointer"
+                                data-name="{{ project.name.lower() }}"
+                                data-status="{% if project.has_summary %}complete{% elif project.has_transcript %}transcribed{% else %}processing{% endif %}"
+                                onclick="window.location='/project/{{ project.name }}'">
+                                <td class="px-6 py-4">
+                                    <div class="font-medium text-gray-900">{{ project.name.replace('_', ' ') }}</div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    {% if project.has_transcript and project.has_summary %}
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700">
+                                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                        </svg>
+                                        Complete
+                                    </span>
+                                    {% elif project.has_transcript %}
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-50 text-yellow-700">
+                                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/>
+                                        </svg>
+                                        Transcribed
+                                    </span>
+                                    {% else %}
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                                        <svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Processing
+                                    </span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-500">
+                                    {% if project.duration %}{{ project.duration }}{% else %}--{% endif %}
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-500">
+                                    {{ project.created }}
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    <div class="flex items-center justify-end gap-2" onclick="event.stopPropagation()">
+                                        <a href="/project/{{ project.name }}" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title="View">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                            </svg>
+                                        </a>
+                                        {% if project.has_transcript %}
+                                        <a href="/download/{{ project.name }}/transcript" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title="Download Transcript">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                            </svg>
+                                        </a>
+                                        {% endif %}
+                                        {% if project.has_summary %}
+                                        <a href="/download/{{ project.name }}/summary" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title="Download Summary">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                            </svg>
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <!-- Empty State -->
+                <div class="text-center py-16">
+                    <div class="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                        <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">No projects yet</h3>
+                    <p class="text-sm text-gray-500 mb-6">Upload your first audio file to get started with AI-powered transcription.</p>
+                    <a href="/upload" class="inline-flex items-center gap-2 px-4 py-2.5 bg-accent-500 hover:bg-accent-600 text-white rounded-lg font-medium text-sm transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        Upload Audio
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function filterProjects() {
+            const searchInput = document.getElementById('searchInput');
+            const filter = searchInput.value.toLowerCase();
+            const rows = document.querySelectorAll('#projectsTable tr');
+
+            rows.forEach(row => {
+                const name = row.getAttribute('data-name');
+                if (name && name.includes(filter)) {
+                    row.style.display = '';
+                } else if (name) {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        function filterByStatus(status) {
+            const rows = document.querySelectorAll('#projectsTable tr');
+
+            rows.forEach(row => {
+                const rowStatus = row.getAttribute('data-status');
+                if (status === 'all' || rowStatus === status) {
+                    row.style.display = '';
+                } else if (rowStatus) {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        // =====================================================================
+        // USB Device Detection & Batch Import
+        // =====================================================================
+
+        let deviceConnected = false;
+        let importInProgress = false;
+        let deviceFiles = [];
+
+        // Update device indicator in header
+        function updateDeviceIndicator(connected) {
+            const indicator = document.getElementById('deviceIndicator');
+            if (connected) {
+                indicator.classList.remove('hidden');
+            } else {
+                indicator.classList.add('hidden');
+            }
+        }
+
+        // Manual scan for device
+        async function manualScan() {
+            const btn = document.getElementById('scanBtn');
+            const btnText = document.getElementById('scanBtnText');
+
+            btn.disabled = true;
+            btnText.textContent = 'Scanning...';
+
+            try {
+                const response = await fetch('/api/device/scan', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.connected) {
+                    deviceConnected = true;
+                    deviceFiles = data.files || [];
+                    updateDeviceIndicator(true);
+                    renderFileList();
+                    showDeviceModal();
+                } else {
+                    alert('No recorder found. Make sure your device is plugged in and has a "record" folder.');
+                }
+            } catch (error) {
+                console.error('Manual scan failed:', error);
+                alert('Scan failed. Please try again.');
+            } finally {
+                btn.disabled = false;
+                btnText.textContent = 'Scan for Device';
+            }
+        }
+
+        // Check device status every 3 seconds
+        async function checkDeviceStatus() {
+            try {
+                const response = await fetch('/api/device/status');
+                const data = await response.json();
+
+                updateDeviceIndicator(data.connected);
+
+                if (data.connected && !deviceConnected && !importInProgress) {
+                    // Device just connected - show modal
+                    deviceConnected = true;
+                    await loadDeviceFiles();
+                    showDeviceModal();
+                } else if (!data.connected && deviceConnected) {
+                    // Device disconnected
+                    deviceConnected = false;
+                    hideDeviceModal();
+                }
+            } catch (error) {
+                console.error('Device status check failed:', error);
+            }
+        }
+
+        async function loadDeviceFiles() {
+            try {
+                const response = await fetch('/api/device/files');
+                const data = await response.json();
+                deviceFiles = data.files || [];
+                renderFileList();
+            } catch (error) {
+                console.error('Failed to load device files:', error);
+            }
+        }
+
+        function showDeviceModal() {
+            document.getElementById('deviceModal').classList.remove('hidden');
+        }
+
+        function hideDeviceModal() {
+            document.getElementById('deviceModal').classList.add('hidden');
+        }
+
+        function renderFileList() {
+            const container = document.getElementById('deviceFileList');
+            if (!deviceFiles.length) {
+                container.innerHTML = '<p class="text-gray-500 text-sm py-4">No audio files found on device.</p>';
+                return;
+            }
+
+            container.innerHTML = deviceFiles.map((file, index) => `
+                <label class="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
+                    <input type="checkbox" class="file-checkbox w-4 h-4 text-accent-600 rounded border-gray-300"
+                           data-filename="${file.name}" checked>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-medium text-gray-900 truncate">${file.name}</div>
+                        <div class="text-xs text-gray-500">${file.size_mb} MB · ${file.modified}</div>
+                    </div>
+                </label>
+            `).join('');
+
+            updateSelectedCount();
+        }
+
+        function toggleSelectAll() {
+            const checkboxes = document.querySelectorAll('.file-checkbox');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            checkboxes.forEach(cb => cb.checked = !allChecked);
+            updateSelectedCount();
+        }
+
+        function updateSelectedCount() {
+            const checkboxes = document.querySelectorAll('.file-checkbox:checked');
+            const count = checkboxes.length;
+            const total = document.querySelectorAll('.file-checkbox').length;
+            document.getElementById('selectedCount').textContent = `${count} of ${total} selected`;
+
+            // Update select all button text
+            const allChecked = count === total;
+            document.getElementById('selectAllBtn').textContent = allChecked ? 'Deselect All' : 'Select All';
+
+            // Enable/disable import button
+            document.getElementById('importBtn').disabled = count === 0;
+        }
+
+        // Add event listeners for checkboxes
+        document.addEventListener('change', (e) => {
+            if (e.target.classList.contains('file-checkbox')) {
+                updateSelectedCount();
+            }
+        });
+
+        async function startImport() {
+            const checkboxes = document.querySelectorAll('.file-checkbox:checked');
+            const selectedFiles = Array.from(checkboxes).map(cb => cb.dataset.filename);
+            const whisperModel = document.getElementById('importWhisperModel').value;
+
+            if (!selectedFiles.length) return;
+
+            importInProgress = true;
+
+            // Hide file selection, show progress
+            document.getElementById('fileSelectionView').classList.add('hidden');
+            document.getElementById('importProgressView').classList.remove('hidden');
+
+            try {
+                const response = await fetch('/api/device/import', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        files: selectedFiles,
+                        whisper_model: whisperModel
+                    })
+                });
+
+                if (response.ok) {
+                    // Start polling for import status
+                    pollImportStatus();
+                } else {
+                    const error = await response.json();
+                    alert('Import failed: ' + (error.error || 'Unknown error'));
+                    resetModal();
+                }
+            } catch (error) {
+                console.error('Import request failed:', error);
+                alert('Failed to start import');
+                resetModal();
+            }
+        }
+
+        async function pollImportStatus() {
+            try {
+                const response = await fetch('/api/device/import/status');
+                const status = await response.json();
+
+                updateProgressUI(status);
+
+                if (status.active) {
+                    setTimeout(pollImportStatus, 1000);
+                } else {
+                    // Import complete
+                    importInProgress = false;
+                    showImportComplete(status);
+                }
+            } catch (error) {
+                console.error('Status poll failed:', error);
+                setTimeout(pollImportStatus, 2000);
+            }
+        }
+
+        function updateProgressUI(status) {
+            const progressBar = document.getElementById('importProgressBar');
+            const progressText = document.getElementById('importProgressText');
+            const currentFile = document.getElementById('currentFileName');
+            const currentStep = document.getElementById('currentStep');
+            const currentDetail = document.getElementById('currentDetail');
+            const stepProgressBar = document.getElementById('stepProgressBar');
+            const timeRemaining = document.getElementById('timeRemaining');
+
+            const percent = status.total_files > 0
+                ? Math.round((status.completed_files / status.total_files) * 100)
+                : 0;
+
+            progressBar.style.width = `${percent}%`;
+            progressText.textContent = `${status.completed_files} of ${status.total_files} files`;
+
+            if (status.current_file) {
+                currentFile.textContent = status.current_file;
+            } else {
+                currentFile.textContent = 'Finishing up...';
+            }
+
+            // Show current step details
+            if (status.current_step) {
+                currentStep.textContent = status.current_step;
+            }
+            if (status.current_detail) {
+                currentDetail.textContent = `- ${status.current_detail}`;
+            } else {
+                currentDetail.textContent = '';
+            }
+
+            // Update step progress bar
+            if (status.current_progress) {
+                stepProgressBar.style.width = `${status.current_progress}%`;
+            }
+
+            if (status.estimated_remaining) {
+                const mins = Math.floor(status.estimated_remaining / 60);
+                const secs = status.estimated_remaining % 60;
+                timeRemaining.textContent = `Est. remaining: ${mins}m ${secs}s`;
+            } else {
+                timeRemaining.textContent = '';
+            }
+
+            // Update file status list
+            const statusList = document.getElementById('fileStatusList');
+            statusList.innerHTML = status.files_status.map(f => {
+                let statusIcon = '';
+                let statusClass = '';
+                if (f.status === 'complete') {
+                    statusIcon = '✓';
+                    statusClass = 'text-green-600';
+                } else if (f.status === 'processing' || f.status === 'copying') {
+                    statusIcon = '⟳';
+                    statusClass = 'text-blue-600 animate-spin inline-block';
+                } else if (f.status === 'error') {
+                    statusIcon = '✗';
+                    statusClass = 'text-red-600';
+                } else {
+                    statusIcon = '○';
+                    statusClass = 'text-gray-400';
+                }
+                const statusText = f.status === 'copying' ? ' (copying...)' : '';
+                return `
+                    <div class="flex items-center gap-2 py-1.5 text-sm">
+                        <span class="${statusClass}">${statusIcon}</span>
+                        <span class="truncate flex-1 ${f.status === 'processing' || f.status === 'copying' ? 'font-medium' : ''}">${f.name}${statusText}</span>
+                        ${f.project_name ? `<a href="/project/${f.project_name}" class="text-accent-600 hover:underline text-xs">View</a>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function showImportComplete(status) {
+            const completed = status.files_status.filter(f => f.status === 'complete').length;
+            const errors = status.files_status.filter(f => f.status === 'error').length;
+
+            document.getElementById('currentFileName').textContent =
+                `Complete! ${completed} imported${errors > 0 ? `, ${errors} failed` : ''}`;
+            document.getElementById('timeRemaining').textContent = '';
+            document.getElementById('importProgressBar').style.width = '100%';
+
+            // Show close button
+            document.getElementById('importCloseBtn').classList.remove('hidden');
+        }
+
+        function resetModal() {
+            importInProgress = false;
+            document.getElementById('fileSelectionView').classList.remove('hidden');
+            document.getElementById('importProgressView').classList.add('hidden');
+            document.getElementById('importCloseBtn').classList.add('hidden');
+            hideDeviceModal();
+        }
+
+        function closeAndRefresh() {
+            resetModal();
+            window.location.reload();
+        }
+
+        // Start device monitoring
+        setInterval(checkDeviceStatus, 3000);
+        checkDeviceStatus(); // Initial check
+    </script>
+
+    <!-- Device Detection Modal -->
+    <div id="deviceModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <!-- Backdrop -->
+            <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onclick="hideDeviceModal()"></div>
+
+            <!-- Modal Content -->
+            <div class="relative bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[80vh] overflow-hidden">
+                <!-- Header -->
+                <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-accent-500 to-accent-600">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-white">Recorder Detected</h3>
+                            <p class="text-sm text-white text-opacity-80">Import audio files from your device</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- File Selection View -->
+                <div id="fileSelectionView">
+                    <div class="px-6 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                        <span id="selectedCount" class="text-sm text-gray-600">0 of 0 selected</span>
+                        <button id="selectAllBtn" onclick="toggleSelectAll()" class="text-sm text-accent-600 hover:text-accent-700 font-medium">
+                            Select All
+                        </button>
+                    </div>
+
+                    <div id="deviceFileList" class="px-6 py-4 max-h-48 overflow-y-auto">
+                        <p class="text-gray-500 text-sm py-4">Loading files...</p>
+                    </div>
+
+                    <!-- Whisper Model Selector -->
+                    <div class="px-6 py-3 border-t border-gray-200 bg-gray-50">
+                        <label class="block text-xs font-medium text-gray-500 mb-1.5">Transcription Model</label>
+                        <select id="importWhisperModel" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent-500 bg-white">
+                            <option value="tiny.en">tiny.en - Fastest (~1GB VRAM)</option>
+                            <option value="base.en" selected>base.en - Balanced (Recommended)</option>
+                            <option value="small.en">small.en - Better accuracy (~2GB VRAM)</option>
+                            <option value="medium.en">medium.en - High accuracy (~5GB VRAM)</option>
+                        </select>
+                    </div>
+
+                    <div class="px-6 py-4 border-t border-gray-200 flex gap-3">
+                        <button onclick="hideDeviceModal()" class="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                            Cancel
+                        </button>
+                        <button id="importBtn" onclick="startImport()" class="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-accent-600 hover:bg-accent-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                            Import Selected
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Import Progress View -->
+                <div id="importProgressView" class="hidden">
+                    <div class="px-6 py-6">
+                        <!-- Overall Progress -->
+                        <div class="mb-4">
+                            <div class="flex justify-between text-sm mb-2">
+                                <span id="importProgressText" class="font-medium">0 of 0 files</span>
+                                <span id="timeRemaining" class="text-gray-500"></span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                <div id="importProgressBar" class="bg-accent-600 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <!-- Current File Status -->
+                        <div class="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                            <p id="currentFileName" class="text-sm font-medium text-blue-900 mb-1">Starting import...</p>
+                            <div class="flex items-center gap-2">
+                                <span id="currentStep" class="text-xs text-blue-700 font-medium"></span>
+                                <span id="currentDetail" class="text-xs text-blue-600"></span>
+                            </div>
+                            <!-- Step Progress Bar -->
+                            <div class="w-full bg-blue-200 rounded-full h-1.5 mt-2">
+                                <div id="stepProgressBar" class="bg-blue-600 h-1.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <!-- File List -->
+                        <div id="fileStatusList" class="max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-3 bg-gray-50">
+                            <!-- File statuses will be rendered here -->
+                        </div>
+                    </div>
+
+                    <div class="px-6 py-4 border-t border-gray-200">
+                        <button id="importCloseBtn" onclick="closeAndRefresh()" class="hidden w-full px-4 py-2.5 text-sm font-medium text-white bg-accent-600 hover:bg-accent-700 rounded-lg transition-colors">
+                            Done - View Projects
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

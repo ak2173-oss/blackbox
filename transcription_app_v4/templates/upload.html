@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Audio - BlackBox</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        accent: {
+                            50: '#F9FAFB',
+                            100: '#F3F4F6',
+                            500: '#1F2937',
+                            600: '#111827',
+                            700: '#030712',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #E5E5E5; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #D1D1D1; }
+
+        .nav-item { transition: all 0.15s ease; }
+
+        /* Upload area states */
+        .upload-area { transition: all 0.2s ease; }
+        .upload-area.dragover {
+            border-color: #7C3AED;
+            background-color: #F3F0FF;
+        }
+
+        /* Progress bar animation */
+        .progress-shimmer {
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            animation: shimmer 1.5s infinite;
+        }
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+    </style>
+</head>
+<body class="bg-white text-gray-900 font-sans antialiased">
+    <div class="flex h-screen overflow-hidden">
+
+        <!-- Sidebar -->
+        <aside class="w-60 bg-gray-50 border-r border-gray-200 flex flex-col flex-shrink-0">
+            <div class="p-4 border-b border-gray-200">
+                <div class="flex items-center gap-2 mb-3">
+                    <div class="w-8 h-8 bg-accent-500 rounded-lg flex items-center justify-center">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+                        </svg>
+                    </div>
+                    <span class="font-semibold text-lg">BlackBox</span>
+                </div>
+            </div>
+
+            <div class="p-4">
+                <a href="/upload" class="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-accent-500 text-white rounded-lg font-medium text-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Upload Audio
+                </a>
+            </div>
+
+            <nav class="px-3 flex-1 overflow-y-auto">
+                <div class="space-y-1 mb-4">
+                    <a href="/" class="nav-item flex items-center gap-3 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                        </svg>
+                        Home
+                    </a>
+                    <a href="/health" class="nav-item flex items-center gap-3 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        System Status
+                    </a>
+                </div>
+            </nav>
+
+            <div class="p-4 border-t border-gray-200">
+                <div class="text-xs text-gray-400 mb-1">BlackBox v4.0</div>
+                <div class="text-xs text-gray-400">GPU-Accelerated Transcription</div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto">
+            <div class="p-8 max-w-3xl mx-auto">
+                <!-- Header -->
+                <div class="mb-8">
+                    <a href="/" class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-4">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                        </svg>
+                        Back to Projects
+                    </a>
+                    <h1 class="text-2xl font-semibold text-gray-900">Upload Audio</h1>
+                    <p class="text-sm text-gray-500 mt-1">Upload your audio file for AI-powered transcription and analysis</p>
+                </div>
+
+                <!-- Settings Panel -->
+                <div class="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-6" id="settingsPanel">
+                    <!-- Transcription Engine -->
+                    <div class="mb-6">
+                        <div class="flex items-center gap-2 mb-4">
+                            <h3 class="text-sm font-medium text-gray-900">Transcription Engine</h3>
+                            <span class="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded">GPU</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <label class="relative flex items-start p-4 border-2 border-accent-500 bg-accent-50 rounded-lg cursor-pointer" id="whisperOption">
+                                <input type="radio" name="engine" value="whisper" checked id="whisperRadio" class="sr-only">
+                                <div class="flex-1">
+                                    <span class="block text-sm font-medium text-gray-900">Whisper</span>
+                                    <span class="block text-xs text-gray-500 mt-1">OpenAI Whisper - Best accuracy</span>
+                                </div>
+                                <div class="w-5 h-5 border-2 border-accent-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <div class="w-2.5 h-2.5 bg-accent-500 rounded-full"></div>
+                                </div>
+                            </label>
+                            <label class="relative flex items-start p-4 border-2 border-gray-200 hover:border-gray-300 rounded-lg cursor-pointer" id="parakeetOption">
+                                <input type="radio" name="engine" value="parakeet" id="parakeetRadio" class="sr-only">
+                                <div class="flex-1">
+                                    <span class="block text-sm font-medium text-gray-900">Wav2Vec2</span>
+                                    <span class="block text-xs text-gray-500 mt-1">Facebook AI - Fast processing</span>
+                                </div>
+                                <div class="w-5 h-5 border-2 border-gray-300 rounded-full flex items-center justify-center flex-shrink-0">
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Whisper Model Size -->
+                    <div id="whisperModelSection">
+                        <label class="block text-sm font-medium text-gray-900 mb-2">Model Size</label>
+                        <select id="whisperModelSelect" class="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent bg-white">
+                            <option value="tiny.en">tiny.en - Fastest (~1GB VRAM)</option>
+                            <option value="base.en" selected>base.en - Recommended (~1GB VRAM)</option>
+                            <option value="small.en">small.en - Better accuracy (~2GB VRAM)</option>
+                            <option value="medium.en">medium.en - Best accuracy (~5GB VRAM)</option>
+                        </select>
+                        <p class="text-xs text-gray-500 mt-2">Larger models are more accurate but require more GPU memory</p>
+                    </div>
+
+                    <!-- AI Summary Info -->
+                    <div class="mt-6 pt-6 border-t border-gray-200">
+                        <div class="flex items-center gap-2">
+                            <svg class="w-4 h-4 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                            </svg>
+                            <span class="text-sm text-gray-600">AI Summarization: <span class="font-medium text-gray-900">{{ llm_model }}</span></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Upload Area -->
+                <div class="upload-area border-2 border-dashed border-gray-300 rounded-lg p-12 text-center cursor-pointer hover:border-gray-400 transition-colors" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+                    <div class="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                        <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-medium text-gray-900 mb-1">Drop your audio file here</h3>
+                    <p class="text-sm text-gray-500 mb-4">or click to browse</p>
+                    <button class="px-6 py-2.5 bg-accent-500 hover:bg-accent-600 text-white rounded-lg font-medium text-sm transition-colors">
+                        Choose File
+                    </button>
+                    <input type="file" id="fileInput" class="hidden" accept=".mp3,.wav,.m4a,.mp4,.webm,.ogg,.flac,.aac">
+
+                    <div class="mt-6 pt-6 border-t border-gray-200">
+                        <div class="flex flex-wrap justify-center gap-4 text-xs text-gray-500">
+                            <span>MP3</span>
+                            <span>WAV</span>
+                            <span>M4A</span>
+                            <span>MP4</span>
+                            <span>WebM</span>
+                            <span>OGG</span>
+                            <span>FLAC</span>
+                            <span>AAC</span>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-2">Maximum file size: 500MB</p>
+                    </div>
+                </div>
+
+                <!-- Progress Container (hidden initially) -->
+                <div class="hidden" id="progressContainer">
+                    <div class="bg-gray-50 border border-gray-200 rounded-lg p-6">
+                        <!-- Status Header -->
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-accent-100 rounded-full flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-accent-500 animate-spin" fill="none" viewBox="0 0 24 24" id="spinnerIcon">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <svg class="w-5 h-5 text-green-500 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" id="completeIcon">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <div class="font-medium text-gray-900" id="statusMessage">Processing...</div>
+                                    <div class="text-xs text-gray-500" id="stepIndicator">Initializing...</div>
+                                </div>
+                            </div>
+                            <div class="text-sm text-gray-500" id="elapsedTime">0s</div>
+                        </div>
+
+                        <!-- Progress Bar -->
+                        <div class="h-2 bg-gray-200 rounded-full overflow-hidden mb-4">
+                            <div class="h-full bg-accent-500 rounded-full transition-all duration-300 relative overflow-hidden" id="progressFill" style="width: 0%">
+                                <div class="absolute inset-0 progress-shimmer"></div>
+                            </div>
+                        </div>
+
+                        <!-- Progress Percentage -->
+                        <div class="flex justify-between text-sm mb-4">
+                            <span class="text-gray-500">Progress</span>
+                            <span class="font-medium text-gray-900" id="progressPercentage">0%</span>
+                        </div>
+
+                        <!-- Status Details -->
+                        <div class="bg-white border border-gray-200 rounded-lg p-4 max-h-40 overflow-y-auto text-xs text-gray-600 font-mono" id="statusDetails">
+                            Initializing pipeline...
+                        </div>
+
+                        <!-- Complete Actions (hidden initially) -->
+                        <div class="hidden mt-6 pt-6 border-t border-gray-200" id="completeActions">
+                            <div class="flex gap-3">
+                                <a href="/" class="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-lg font-medium text-sm text-center hover:bg-gray-50 transition-colors">
+                                    View All Projects
+                                </a>
+                                <a href="#" class="flex-1 px-4 py-2.5 bg-accent-500 hover:bg-accent-600 text-white rounded-lg font-medium text-sm text-center transition-colors" id="viewProjectBtn">
+                                    View This Project
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressFill = document.getElementById('progressFill');
+        const progressPercentage = document.getElementById('progressPercentage');
+        const statusMessage = document.getElementById('statusMessage');
+        const statusDetails = document.getElementById('statusDetails');
+        const stepIndicator = document.getElementById('stepIndicator');
+        const elapsedTime = document.getElementById('elapsedTime');
+        const completeActions = document.getElementById('completeActions');
+        const viewProjectBtn = document.getElementById('viewProjectBtn');
+        const settingsPanel = document.getElementById('settingsPanel');
+        const spinnerIcon = document.getElementById('spinnerIcon');
+        const completeIcon = document.getElementById('completeIcon');
+
+        let currentJobId = null;
+        let eventSource = null;
+
+        // Handle radio button selection
+        const whisperOption = document.getElementById('whisperOption');
+        const parakeetOption = document.getElementById('parakeetOption');
+        const whisperRadio = document.getElementById('whisperRadio');
+        const parakeetRadio = document.getElementById('parakeetRadio');
+        const whisperModelSection = document.getElementById('whisperModelSection');
+
+        whisperOption.addEventListener('click', () => {
+            whisperRadio.checked = true;
+            whisperOption.classList.remove('border-gray-200', 'hover:border-gray-300');
+            whisperOption.classList.add('border-accent-500', 'bg-accent-50');
+            whisperOption.querySelector('.w-5').innerHTML = '<div class="w-2.5 h-2.5 bg-accent-500 rounded-full"></div>';
+            whisperOption.querySelector('.w-5').classList.remove('border-gray-300');
+            whisperOption.querySelector('.w-5').classList.add('border-accent-500');
+
+            parakeetOption.classList.remove('border-accent-500', 'bg-accent-50');
+            parakeetOption.classList.add('border-gray-200', 'hover:border-gray-300');
+            parakeetOption.querySelector('.w-5').innerHTML = '';
+            parakeetOption.querySelector('.w-5').classList.remove('border-accent-500');
+            parakeetOption.querySelector('.w-5').classList.add('border-gray-300');
+
+            whisperModelSection.style.display = 'block';
+        });
+
+        parakeetOption.addEventListener('click', () => {
+            parakeetRadio.checked = true;
+            parakeetOption.classList.remove('border-gray-200', 'hover:border-gray-300');
+            parakeetOption.classList.add('border-accent-500', 'bg-accent-50');
+            parakeetOption.querySelector('.w-5').innerHTML = '<div class="w-2.5 h-2.5 bg-accent-500 rounded-full"></div>';
+            parakeetOption.querySelector('.w-5').classList.remove('border-gray-300');
+            parakeetOption.querySelector('.w-5').classList.add('border-accent-500');
+
+            whisperOption.classList.remove('border-accent-500', 'bg-accent-50');
+            whisperOption.classList.add('border-gray-200', 'hover:border-gray-300');
+            whisperOption.querySelector('.w-5').innerHTML = '';
+            whisperOption.querySelector('.w-5').classList.remove('border-accent-500');
+            whisperOption.querySelector('.w-5').classList.add('border-gray-300');
+
+            whisperModelSection.style.display = 'none';
+        });
+
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            const maxSize = 500 * 1024 * 1024;
+            if (file.size > maxSize) {
+                alert('File is too large! Maximum size is 500MB.');
+                return;
+            }
+            uploadFile(file);
+        }
+
+        function uploadFile(file) {
+            const formData = new FormData();
+            formData.append('audio', file);
+
+            const selectedEngine = document.querySelector('input[name="engine"]:checked').value;
+            formData.append('engine', selectedEngine);
+
+            if (selectedEngine === 'whisper') {
+                formData.append('whisper_model', document.getElementById('whisperModelSelect').value);
+            }
+
+            settingsPanel.style.display = 'none';
+            uploadArea.style.display = 'none';
+            progressContainer.classList.remove('hidden');
+            statusMessage.textContent = `Uploading ${file.name}...`;
+            stepIndicator.textContent = 'Uploading';
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    currentJobId = data.job_id;
+                    statusMessage.textContent = 'Processing...';
+                    stepIndicator.textContent = 'Starting transcription';
+                    startStatusStreaming(data.job_id);
+                } else {
+                    statusMessage.textContent = `Error: ${data.error}`;
+                    statusDetails.innerHTML = data.error;
+                }
+            })
+            .catch(error => {
+                statusMessage.textContent = `Upload failed`;
+                statusDetails.innerHTML = `Error: ${error}`;
+            });
+        }
+
+        function startStatusStreaming(jobId) {
+            eventSource = new EventSource(`/api/status/stream/${jobId}`);
+
+            eventSource.onmessage = function(event) {
+                try {
+                    const status = JSON.parse(event.data);
+
+                    if (status.error) {
+                        statusMessage.textContent = `Error: ${status.error}`;
+                        eventSource.close();
+                        return;
+                    }
+
+                    progressFill.style.width = status.progress + '%';
+                    progressPercentage.textContent = status.progress + '%';
+                    statusMessage.textContent = status.message;
+                    stepIndicator.textContent = status.step || 'Processing';
+
+                    if (status.details && status.details.length > 0) {
+                        statusDetails.innerHTML = status.details.join('<br>');
+                        statusDetails.scrollTop = statusDetails.scrollHeight;
+                    }
+
+                    if (status.elapsed_time) {
+                        elapsedTime.textContent = status.elapsed_time + 's';
+                    }
+
+                    if (status.status === 'complete') {
+                        statusMessage.textContent = 'Processing complete!';
+                        stepIndicator.textContent = 'Complete';
+                        progressFill.style.width = '100%';
+                        progressPercentage.textContent = '100%';
+                        completeActions.classList.remove('hidden');
+                        spinnerIcon.classList.add('hidden');
+                        completeIcon.classList.remove('hidden');
+
+                        if (status.project_name) {
+                            viewProjectBtn.href = `/project/${status.project_name}`;
+                        }
+                        eventSource.close();
+                    } else if (status.status === 'error') {
+                        statusMessage.textContent = `Error: ${status.message}`;
+                        stepIndicator.textContent = 'Failed';
+                        progressFill.classList.remove('bg-accent-500');
+                        progressFill.classList.add('bg-red-500');
+                        eventSource.close();
+                    }
+                } catch (e) {
+                    console.error('Error parsing status:', e);
+                }
+            };
+
+            eventSource.onerror = function() {
+                eventSource.close();
+                startStatusPolling(jobId);
+            };
+        }
+
+        function startStatusPolling(jobId) {
+            const poll = () => {
+                fetch(`/api/status/${jobId}`)
+                .then(response => response.json())
+                .then(status => {
+                    if (status.error) {
+                        statusMessage.textContent = `Error: ${status.error}`;
+                        return;
+                    }
+
+                    progressFill.style.width = status.progress + '%';
+                    progressPercentage.textContent = status.progress + '%';
+                    statusMessage.textContent = status.message;
+                    stepIndicator.textContent = status.step || 'Processing';
+
+                    if (status.details && status.details.length > 0) {
+                        statusDetails.innerHTML = status.details.join('<br>');
+                        statusDetails.scrollTop = statusDetails.scrollHeight;
+                    }
+
+                    if (status.elapsed_time) {
+                        elapsedTime.textContent = status.elapsed_time + 's';
+                    }
+
+                    if (status.status === 'complete') {
+                        statusMessage.textContent = 'Processing complete!';
+                        stepIndicator.textContent = 'Complete';
+                        progressFill.style.width = '100%';
+                        progressPercentage.textContent = '100%';
+                        completeActions.classList.remove('hidden');
+                        spinnerIcon.classList.add('hidden');
+                        completeIcon.classList.remove('hidden');
+
+                        if (status.project_name) {
+                            viewProjectBtn.href = `/project/${status.project_name}`;
+                        }
+                    } else if (status.status === 'error') {
+                        statusMessage.textContent = `Error: ${status.message}`;
+                        stepIndicator.textContent = 'Failed';
+                    } else {
+                        setTimeout(poll, 1000);
+                    }
+                })
+                .catch(() => setTimeout(poll, 2000));
+            };
+            poll();
+        }
+
+        window.addEventListener('beforeunload', () => {
+            if (eventSource) eventSource.close();
+        });
+    </script>
+</body>
+</html>

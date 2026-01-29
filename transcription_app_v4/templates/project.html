@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ project_name }} - BlackBox</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        accent: {
+                            50: '#F9FAFB',
+                            100: '#F3F4F6',
+                            500: '#1F2937',
+                            600: '#111827',
+                            700: '#030712',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #E5E5E5; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #D1D1D1; }
+
+        .nav-item { transition: all 0.15s ease; }
+
+        /* Message animations */
+        @keyframes messageSlide {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .message { animation: messageSlide 0.3s ease; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+        .thinking { animation: pulse 1.5s infinite; }
+
+        /* Markdown Summary Styles */
+        /* Audio Player Slider */
+        #progressBar::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            background: #7C3AED;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        #progressBar::-moz-range-thumb {
+            width: 12px;
+            height: 12px;
+            background: #7C3AED;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+
+        .summary-markdown h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .summary-markdown h2:first-child {
+            margin-top: 0;
+        }
+        .summary-markdown h3 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #374151;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        .summary-markdown p {
+            margin-bottom: 0.75rem;
+            line-height: 1.6;
+        }
+        .summary-markdown ul, .summary-markdown ol {
+            margin-left: 1.25rem;
+            margin-bottom: 0.75rem;
+        }
+        .summary-markdown li {
+            margin-bottom: 0.5rem;
+            line-height: 1.5;
+        }
+        .summary-markdown strong {
+            font-weight: 600;
+            color: #1f2937;
+        }
+        .summary-markdown table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            font-size: 0.85rem;
+        }
+        .summary-markdown th {
+            background: #f3f4f6;
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+            font-weight: 600;
+            border: 1px solid #e5e7eb;
+        }
+        .summary-markdown td {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #e5e7eb;
+        }
+        .summary-markdown tr:hover {
+            background: #f9fafb;
+        }
+        .summary-markdown blockquote {
+            border-left: 3px solid #7C3AED;
+            padding-left: 1rem;
+            margin: 0.75rem 0;
+            color: #6b7280;
+            font-style: italic;
+        }
+        .summary-markdown code {
+            background: #f3f4f6;
+            padding: 0.125rem 0.375rem;
+            border-radius: 0.25rem;
+            font-size: 0.85em;
+        }
+        .summary-markdown hr {
+            border: none;
+            border-top: 1px solid #e5e7eb;
+            margin: 1.5rem 0;
+        }
+    </style>
+</head>
+<body class="bg-white text-gray-900 font-sans antialiased">
+    <div class="flex h-screen overflow-hidden">
+
+        <!-- Sidebar with Projects List -->
+        <aside class="w-60 bg-gray-50 border-r border-gray-200 flex flex-col flex-shrink-0">
+            <div class="p-4 border-b border-gray-200">
+                <a href="/" class="flex items-center gap-2">
+                    <div class="w-8 h-8 bg-accent-500 rounded-lg flex items-center justify-center">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+                        </svg>
+                    </div>
+                    <span class="font-semibold text-lg">BlackBox</span>
+                </a>
+            </div>
+
+            <div class="p-4">
+                <a href="/upload" class="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-accent-500 hover:bg-accent-600 text-white rounded-lg font-medium text-sm transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Upload Audio
+                </a>
+            </div>
+
+            <nav class="px-3 flex-1 overflow-y-auto">
+                <div class="mb-2">
+                    <span class="px-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Projects</span>
+                </div>
+                <div class="space-y-1 pb-4">
+                    {% if all_projects %}
+                    {% for project in all_projects %}
+                    <a href="/project/{{ project.name }}"
+                       class="nav-item flex items-center gap-3 px-3 py-2 text-sm rounded-lg {% if project.name == project_name %}text-accent-600 bg-accent-50 border-l-2 border-accent-500{% else %}text-gray-600 hover:bg-gray-100{% endif %}">
+                        <div class="w-1.5 h-1.5 rounded-full {% if project.has_summary %}bg-green-500{% elif project.has_transcript %}bg-yellow-500{% else %}bg-gray-300{% endif %}"></div>
+                        <span class="truncate flex-1">{{ project.name.replace('_', ' ')[:25] }}{% if project.name|length > 25 %}...{% endif %}</span>
+                    </a>
+                    {% endfor %}
+                    {% endif %}
+                </div>
+            </nav>
+
+            <div class="p-4 border-t border-gray-200">
+                <a href="/" class="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                    </svg>
+                    Back to Home
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 flex overflow-hidden">
+            <!-- Content Panel -->
+            <main class="flex-1 overflow-y-auto">
+                <div class="p-8">
+                    <!-- Header -->
+                    <div class="mb-6">
+                        <h1 class="text-2xl font-semibold text-gray-900 mb-2">{{ project_name.replace('_', ' ') }}</h1>
+                        <div class="flex items-center gap-4">
+                            {% if transcript %}
+                            <a href="/download/{{ project_name }}/transcript" class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-accent-600">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                                Download Transcript
+                            </a>
+                            {% endif %}
+                            {% if summary %}
+                            <a href="/download/{{ project_name }}/summary" class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-accent-600">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                                Download Summary
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Audio Player -->
+                    {% if has_audio %}
+                    <div class="mb-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
+                        <div class="flex items-center gap-4">
+                            <!-- Play/Pause Button -->
+                            <button id="playPauseBtn" onclick="togglePlayPause()" class="w-10 h-10 flex items-center justify-center bg-accent-500 hover:bg-accent-600 rounded-full text-white transition-colors flex-shrink-0">
+                                <svg id="playIcon" class="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M8 5v14l11-7z"/>
+                                </svg>
+                                <svg id="pauseIcon" class="w-5 h-5 hidden" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                                </svg>
+                            </button>
+
+                            <!-- Progress Section -->
+                            <div class="flex-1">
+                                <div class="flex items-center gap-3">
+                                    <span id="currentTime" class="text-xs text-gray-500 w-12 text-right font-mono">0:00</span>
+                                    <div class="flex-1 relative">
+                                        <input type="range" id="progressBar" min="0" max="100" value="0"
+                                               class="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer accent-accent-500"
+                                               oninput="seekAudio(this.value)">
+                                    </div>
+                                    <span id="duration" class="text-xs text-gray-500 w-12 font-mono">0:00</span>
+                                </div>
+                            </div>
+
+                            <!-- Speed Control -->
+                            <select id="speedControl" onchange="changeSpeed(this.value)" class="text-xs bg-white border border-gray-200 rounded px-2 py-1 text-gray-600">
+                                <option value="0.5">0.5x</option>
+                                <option value="0.75">0.75x</option>
+                                <option value="1" selected>1x</option>
+                                <option value="1.25">1.25x</option>
+                                <option value="1.5">1.5x</option>
+                                <option value="2">2x</option>
+                            </select>
+
+                            <!-- Download Audio -->
+                            <a href="/download/{{ project_name }}/audio" class="text-gray-400 hover:text-gray-600" title="Download Audio">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                </svg>
+                            </a>
+                        </div>
+
+                        <!-- Hidden Audio Element -->
+                        <audio id="audioPlayer" src="/audio/{{ project_name }}" preload="metadata"></audio>
+                    </div>
+                    {% endif %}
+
+                    <!-- Tabs -->
+                    <div class="border-b border-gray-200 mb-6">
+                        <nav class="flex gap-8">
+                            <button onclick="showTab('transcript')" id="tab-transcript"
+                                    class="py-3 text-sm font-medium border-b-2 border-accent-500 text-accent-600">
+                                Transcript
+                            </button>
+                            <button onclick="showTab('summary')" id="tab-summary"
+                                    class="py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                                Summary
+                            </button>
+                            {% if timing_data %}
+                            <button onclick="showTab('info')" id="tab-info"
+                                    class="py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                                Info
+                            </button>
+                            {% endif %}
+                        </nav>
+                    </div>
+
+                    <!-- Tab Content: Transcript -->
+                    <div id="content-transcript" class="tab-content">
+                        {% if transcript %}
+                        <div class="space-y-4">
+                            {% for segment in transcript %}
+                            {% set hrs = (segment.start // 3600)|int %}
+                            {% set mins = ((segment.start % 3600) // 60)|int %}
+                            {% set secs = (segment.start % 60)|int %}
+                            {% set timestamp = "%02d:%02d:%02d"|format(hrs, mins, secs) %}
+                            <div class="p-4 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                                 onclick="jumpToTime({{ segment.start }})"
+                                 title="Click to play from {{ timestamp }}">
+                                <!-- Header: Timestamp + Speaker + Play icon -->
+                                <div class="flex items-center gap-3 mb-2">
+                                    <span class="text-sm text-gray-500 font-mono">{{ timestamp }}</span>
+                                    <span class="text-sm font-medium text-gray-900">{{ segment.speaker }}</span>
+                                    <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M8 5v14l11-7z"/>
+                                    </svg>
+                                </div>
+                                <!-- Text content -->
+                                <div class="text-sm text-gray-700 leading-relaxed">{{ segment.text }}</div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="text-center py-16">
+                            <div class="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                                <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                            </div>
+                            <h3 class="text-lg font-medium text-gray-900 mb-2">No transcript available</h3>
+                            <p class="text-sm text-gray-500">The transcript is still being processed or failed to generate.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Tab Content: Summary -->
+                    <div id="content-summary" class="tab-content hidden">
+                        {% if summary %}
+                        <div class="bg-gray-50 border border-gray-200 rounded-lg p-6">
+                            <div id="summary-content" class="summary-markdown text-sm text-gray-700 leading-relaxed"></div>
+                        </div>
+                        <script>
+                            // Render markdown summary
+                            const summaryRaw = {{ summary | tojson | safe }};
+                            document.getElementById('summary-content').innerHTML = marked.parse(summaryRaw);
+                        </script>
+                        {% else %}
+                        <div class="text-center py-16">
+                            <div class="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                                <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                                </svg>
+                            </div>
+                            <h3 class="text-lg font-medium text-gray-900 mb-2">No summary available</h3>
+                            <p class="text-sm text-gray-500">The summary is still being generated or failed to complete.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Tab Content: Info -->
+                    {% if timing_data %}
+                    <div id="content-info" class="tab-content hidden">
+                        <div class="bg-gray-50 border border-gray-200 rounded-lg p-6">
+                            <h3 class="text-sm font-medium text-gray-900 mb-4">Processing Information</h3>
+                            <dl class="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <dt class="text-gray-500">Total Time</dt>
+                                    <dd class="font-medium text-gray-900">{{ timing_data.total_minutes }} minutes</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-gray-500">Audio File</dt>
+                                    <dd class="font-medium text-gray-900">{{ timing_data.audio_file }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-gray-500">Processed At</dt>
+                                    <dd class="font-medium text-gray-900">{{ timing_data.processed_at[:19].replace('T', ' ') }}</dd>
+                                </div>
+                            </dl>
+
+                            {% if timing_data.stages %}
+                            <div class="mt-6 pt-6 border-t border-gray-200">
+                                <h4 class="text-sm font-medium text-gray-900 mb-4">Stage Breakdown</h4>
+                                <div class="space-y-2">
+                                    {% for stage, time in timing_data.stages.items() %}
+                                    <div class="flex justify-between text-sm">
+                                        <span class="text-gray-500">{{ stage.replace('_', ' ').title() }}</span>
+                                        <span class="font-medium text-gray-900">{{ time }}s</span>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mt-6 bg-gray-50 border border-gray-200 rounded-lg p-6">
+                            <h3 class="text-sm font-medium text-gray-900 mb-4">Project Files</h3>
+                            <div class="space-y-3">
+                                <div class="flex items-center gap-3 text-sm">
+                                    {% if transcript %}
+                                    <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    {% else %}
+                                    <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
+                                    {% endif %}
+                                    <span class="{% if transcript %}text-gray-900{% else %}text-gray-400{% endif %}">Transcript</span>
+                                </div>
+                                <div class="flex items-center gap-3 text-sm">
+                                    {% if summary %}
+                                    <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    {% else %}
+                                    <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
+                                    {% endif %}
+                                    <span class="{% if summary %}text-gray-900{% else %}text-gray-400{% endif %}">Summary</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </main>
+
+            <!-- Chat Panel -->
+            <aside class="w-96 border-l border-gray-200 flex flex-col bg-white">
+                <div class="p-4 border-b border-gray-200">
+                    <h2 class="font-medium text-gray-900">Ask about this recording</h2>
+                    <p class="text-xs text-gray-500 mt-1">AI-powered Q&A using Qwen2.5</p>
+                </div>
+
+                <!-- Chat Messages -->
+                <div class="flex-1 overflow-y-auto p-4 space-y-4" id="chatMessages">
+                    <div class="bg-accent-50 border border-accent-100 rounded-lg p-4 text-sm text-gray-700">
+                        <p class="font-medium text-accent-700 mb-2">AI Assistant</p>
+                        <p>Ask me anything about this transcript! I can help you find specific information, summarize key points, or answer questions about the conversation.</p>
+                    </div>
+                </div>
+
+                <!-- Chat Input -->
+                <div class="p-4 border-t border-gray-200">
+                    <div class="flex gap-2">
+                        <input type="text"
+                               id="chatInput"
+                               placeholder="Ask a question..."
+                               maxlength="500"
+                               class="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent">
+                        <button id="sendBtn"
+                                onclick="sendMessage()"
+                                class="px-4 py-2.5 bg-accent-500 hover:bg-accent-600 text-white rounded-lg text-sm font-medium transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed">
+                            Send
+                        </button>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <script>
+        const chatMessages = document.getElementById('chatMessages');
+        const chatInput = document.getElementById('chatInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const projectName = '{{ project_name }}';
+        let currentRequest = null;
+
+        // Tab switching
+        function showTab(tabName) {
+            // Hide all content
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            // Show selected content
+            document.getElementById('content-' + tabName).classList.remove('hidden');
+
+            // Update tab styles
+            document.querySelectorAll('[id^="tab-"]').forEach(el => {
+                el.classList.remove('border-accent-500', 'text-accent-600');
+                el.classList.add('border-transparent', 'text-gray-500');
+            });
+            document.getElementById('tab-' + tabName).classList.remove('border-transparent', 'text-gray-500');
+            document.getElementById('tab-' + tabName).classList.add('border-accent-500', 'text-accent-600');
+        }
+
+        // Handle Enter key
+        chatInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        window.addEventListener('beforeunload', function() {
+            if (currentRequest) currentRequest.abort();
+        });
+
+        function formatText(text) {
+            let formatted = text;
+            formatted = formatted.replace(/\*\*\*(.*?)\*\*\*/g, '<strong>$1</strong>');
+            formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            formatted = formatted.replace(/^(\d+)\.\s+\*\*(.*?)\*\*:/gm, '<div class="mt-3"><strong>$1. $2:</strong></div>');
+            formatted = formatted.replace(/^(\d+)\.\s+(.*?)$/gm, '<div class="ml-3">$1. $2</div>');
+            formatted = formatted.replace(/^[•\-]\s+(.*?)$/gm, '<div class="ml-4">• $1</div>');
+            formatted = formatted.replace(/^##\s+(.*?)$/gm, '<div class="font-semibold text-accent-600 mt-4 mb-2">$1</div>');
+            formatted = formatted.replace(/\n\n/g, '<br><br>');
+            formatted = formatted.replace(/\n/g, '<br>');
+            return formatted;
+        }
+
+        function addMessage(content, type = 'user', quotes = null) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+
+            if (type === 'user') {
+                messageDiv.innerHTML = `
+                    <div class="flex justify-end">
+                        <div class="bg-accent-500 text-white px-4 py-2.5 rounded-2xl rounded-br-sm max-w-[85%] text-sm">
+                            ${content}
+                        </div>
+                    </div>
+                `;
+            } else if (type === 'thinking') {
+                messageDiv.innerHTML = `
+                    <div class="flex">
+                        <div class="thinking bg-gray-100 text-gray-500 px-4 py-2.5 rounded-2xl rounded-bl-sm text-sm italic">
+                            Thinking...
+                        </div>
+                    </div>
+                `;
+            } else {
+                let quotesHtml = '';
+                if (quotes && quotes.length > 0) {
+                    quotesHtml = `
+                        <details class="mt-3 text-xs">
+                            <summary class="cursor-pointer text-accent-600 font-medium">View ${quotes.length} quote(s) from transcript</summary>
+                            <div class="mt-2 space-y-2 text-gray-600 bg-gray-50 p-3 rounded-lg">
+                                ${quotes.map(q => `<p class="border-l-2 border-accent-200 pl-2">${q}</p>`).join('')}
+                            </div>
+                        </details>
+                    `;
+                }
+                messageDiv.innerHTML = `
+                    <div class="flex">
+                        <div class="bg-gray-100 px-4 py-2.5 rounded-2xl rounded-bl-sm max-w-[85%] text-sm text-gray-700">
+                            <div class="leading-relaxed">${formatText(content)}</div>
+                            ${quotesHtml}
+                        </div>
+                    </div>
+                `;
+            }
+
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return messageDiv;
+        }
+
+        async function sendMessage() {
+            const question = chatInput.value.trim();
+            if (!question) return;
+
+            if (currentRequest) currentRequest.abort();
+
+            sendBtn.disabled = true;
+            chatInput.disabled = true;
+
+            addMessage(question, 'user');
+            chatInput.value = '';
+            const thinkingMsg = addMessage('', 'thinking');
+
+            try {
+                const controller = new AbortController();
+                currentRequest = controller;
+
+                const response = await fetch('/api/ask_question', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ project: projectName, question: question }),
+                    signal: controller.signal
+                });
+
+                const data = await response.json();
+                thinkingMsg.remove();
+
+                if (data.answer) {
+                    addMessage(data.answer, 'assistant', data.quotes_used || []);
+                } else {
+                    addMessage('Sorry, I couldn\'t generate a response. Please try again.', 'assistant');
+                }
+            } catch (error) {
+                thinkingMsg.remove();
+                if (error.name === 'AbortError') {
+                    addMessage('Request cancelled.', 'assistant');
+                } else {
+                    addMessage('Error: Could not connect to the AI. Make sure Ollama is running.', 'assistant');
+                }
+            }
+
+            currentRequest = null;
+            sendBtn.disabled = false;
+            chatInput.disabled = false;
+            chatInput.focus();
+        }
+
+        // Audio Player Controls
+        const audioPlayer = document.getElementById('audioPlayer');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const playIcon = document.getElementById('playIcon');
+        const pauseIcon = document.getElementById('pauseIcon');
+        const progressBar = document.getElementById('progressBar');
+        const currentTimeEl = document.getElementById('currentTime');
+        const durationEl = document.getElementById('duration');
+
+        if (audioPlayer) {
+            // Format time as HH:MM:SS
+            function formatTime(seconds) {
+                if (isNaN(seconds)) return '00:00:00';
+                const h = Math.floor(seconds / 3600);
+                const m = Math.floor((seconds % 3600) / 60);
+                const s = Math.floor(seconds % 60);
+                return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            }
+
+            // Update duration when metadata loads
+            audioPlayer.addEventListener('loadedmetadata', () => {
+                durationEl.textContent = formatTime(audioPlayer.duration);
+                progressBar.max = audioPlayer.duration;
+            });
+
+            // Update progress bar and time during playback
+            audioPlayer.addEventListener('timeupdate', () => {
+                progressBar.value = audioPlayer.currentTime;
+                currentTimeEl.textContent = formatTime(audioPlayer.currentTime);
+            });
+
+            // Reset when audio ends
+            audioPlayer.addEventListener('ended', () => {
+                playIcon.classList.remove('hidden');
+                pauseIcon.classList.add('hidden');
+            });
+        }
+
+        function togglePlayPause() {
+            if (!audioPlayer) return;
+            if (audioPlayer.paused) {
+                audioPlayer.play();
+                playIcon.classList.add('hidden');
+                pauseIcon.classList.remove('hidden');
+            } else {
+                audioPlayer.pause();
+                playIcon.classList.remove('hidden');
+                pauseIcon.classList.add('hidden');
+            }
+        }
+
+        function seekAudio(value) {
+            if (!audioPlayer) return;
+            audioPlayer.currentTime = value;
+        }
+
+        function changeSpeed(speed) {
+            if (!audioPlayer) return;
+            audioPlayer.playbackRate = parseFloat(speed);
+        }
+
+        // Jump to specific time in audio (called from transcript timestamps)
+        function jumpToTime(seconds) {
+            if (!audioPlayer) {
+                alert('No audio available for this project');
+                return;
+            }
+            audioPlayer.currentTime = seconds;
+            audioPlayer.play();
+            playIcon.classList.add('hidden');
+            pauseIcon.classList.remove('hidden');
+            // Scroll audio player into view
+            document.getElementById('audioPlayer').parentElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // Format seconds to HH:MM:SS display
+        function formatTimestamp(seconds) {
+            const hrs = Math.floor(seconds / 3600);
+            const mins = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // Format all timestamps on page load
+        document.querySelectorAll('.timestamp').forEach(el => {
+            const seconds = parseFloat(el.dataset.seconds);
+            el.textContent = formatTimestamp(seconds);
+        });
+
+        // Load chat history on page load
+        async function loadChatHistory() {
+            try {
+                const response = await fetch(`/api/chat_history/${projectName}`);
+                const history = await response.json();
+
+                if (history && history.length > 0) {
+                    history.forEach(msg => {
+                        if (msg.role === 'user') {
+                            addMessage(msg.content, 'user');
+                        } else if (msg.role === 'assistant') {
+                            addMessage(msg.content, 'assistant', msg.quotes || []);
+                        }
+                    });
+                }
+            } catch (error) {
+                console.log('No chat history or failed to load:', error);
+            }
+        }
+
+        // Load history then focus input
+        loadChatHistory().then(() => {
+            chatInput.focus();
+        });
+    </script>
+</body>
+</html>
