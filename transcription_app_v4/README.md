@@ -28,6 +28,17 @@
 - ✅ Project search and filtering
 - ✅ Detailed timing reports per stage
 
+### New in v4.0
+- ✅ **USB Audio Recorder Detection** - Auto-detect when audio recorder (D:/record) is plugged in
+- ✅ **Batch Import** - Import multiple files from USB device with progress tracking and time estimates
+- ✅ **Clickable Timestamps** - Click any transcript segment to jump audio playback to that time
+- ✅ **Whisper Model Selection** - Choose model size (tiny/base/small/medium) during batch import
+- ✅ **Automatic Whisper Unload** - Frees GPU VRAM after transcription for Ollama
+- ✅ **Chat History Persistence** - Q&A conversations saved per project
+- ✅ **HH:MM:SS Time Format** - All timestamps and durations display as 00:00:00
+- ✅ **Improved Date Format** - Project dates shown as 28-Jan-2026 style
+- ✅ **PLAUD-style Dark UI** - Clean black/gray accent theme
+
 ## 📋 Requirements
 
 ### System Requirements
@@ -136,6 +147,26 @@ On any project page, use the chat interface to:
 - Get clarifications on key points
 - Summarize portions of the transcript
 
+Chat history is automatically saved and persists across sessions.
+
+### USB Audio Recorder Import
+
+1. Plug in your USB audio recorder (detected at D:/record)
+2. A popup will appear showing available audio files
+3. Select files to import (or "Select All")
+4. Choose your preferred Whisper model size
+5. Click "Import Selected" to begin batch processing
+6. Watch real-time progress with time estimates
+
+**Manual scan:** Click "Scan for Device" button if device isn't auto-detected.
+
+### Clickable Timestamps
+
+On any project page:
+- Click any transcript segment to jump audio playback to that timestamp
+- All times displayed in HH:MM:SS format (e.g., 00:05:23)
+- Hover over segments to see "Click to play from" tooltip
+
 ## ⚙️ Configuration
 
 ### Environment Variables
@@ -208,6 +239,9 @@ The application exposes several API endpoints:
 - `POST /api/ask_question` - Ask questions about transcript
 - `GET /download/<project>/<type>` - Download project files
 - `GET /health` - System health check
+- `GET /api/check_device` - Check if USB audio recorder is connected
+- `POST /api/batch_import` - Start batch import from USB device
+- `GET /api/batch_import_status` - Get batch import progress
 
 ### GPU Optimization
 
@@ -305,8 +339,8 @@ Contributions welcome! Areas for improvement:
 - [ ] Support for more languages
 - [ ] Better speaker diarization (pyannote.audio)
 - [ ] Export to SRT/VTT for subtitles
-- [ ] Audio playback with timestamp sync
-- [ ] Batch processing queue
+- [x] ~~Audio playback with timestamp sync~~ (Implemented in v4.0)
+- [x] ~~Batch processing queue~~ (Implemented in v4.0 via USB import)
 - [ ] Docker containerization
 
 ## 📝 License
