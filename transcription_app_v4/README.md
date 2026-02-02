@@ -41,12 +41,63 @@
 - ✅ **Siri-style Border Glow** - iOS 18-inspired animated conic-gradient border glow on device detection
 
 ### Siri Border Glow - Technical Details
-The border glow animation uses CSS Houdini (`@property --siri-angle`) to animate a `conic-gradient` applied via `border-image`. Colors cycle through pink (`#f652bb`), blue (`#0855ff`), purple (`#5f2bf6`), and orange (`#ec882d`). A blurred `::before` pseudo-element provides a soft outer glow. The animation:
-- **Triggers** when USB recorder is detected (auto or manual scan)
-- **Persists** while the import modal is open and during file processing
-- **Fades out** (0.6s transition) when the modal closes, device disconnects, or import completes
-- Uses `pointer-events: none` and `z-index: 9999` so it never blocks interaction
-- Implemented in `templates/index.html` via `showSiriAnimation()` / `hideSiriAnimation()` JS functions
+
+**Inspiration:** The iOS 18 Siri border glow effect. Visual reference was taken from
+[CodePen by firepanther](https://codepen.io/firepanther/pen/WNBZaEd) which demonstrates
+a conic-gradient with blur technique. The CodePen uses the same four colors we adopted.
+
+**Colors (from the CodePen reference):**
+- Pink: `#f652bb`
+- Blue: `#0855ff`
+- Purple: `#5f2bf6`
+- Orange: `#ec882d`
+
+**Final implementation:** CSS Houdini `@property --siri-angle` to animate a custom angle
+property, applied to a `conic-gradient` via `border-image` on a single fixed-position div.
+A `::before` pseudo-element with `filter: blur(15px)` provides the soft outer glow.
+
+**Behavior:**
+- **Triggers** when USB recorder is detected (auto-poll or manual scan button)
+- **Persists** while the device import modal is open and during batch file processing
+- **Fades out** (0.6s CSS opacity transition) when the modal closes, device disconnects, or import completes
+- Uses `pointer-events: none` and `z-index: 9999` so it never blocks user interaction
+- JS API: `showSiriAnimation()` / `hideSiriAnimation()` in `templates/index.html`
+
+**Difficulties encountered during development (3 failed approaches before success):**
+
+1. **Approach 1 - Full viewport overlay with `::after` white masks:** Used a `position: fixed; inset: 0`
+   container with two child divs (`.glow-blur` and `.glow-border`). Each had a spinning `::before`
+   pseudo-element with the conic-gradient, and a `::after` pseudo-element with `background: white`
+   to mask the center and only reveal the border area. **Problem:** The white `::after` backgrounds
+   covered the entire page content, making the app invisible behind a white screen with only the
+   gradient border visible around the edges.
+
+2. **Approach 2 - CSS `mask-composite: exclude`:** Replaced the white `::after` masks with CSS
+   `mask-composite: exclude` (and `-webkit-mask-composite: xor`) using a `padding` trick to cut
+   out the center transparently. **Problem:** `mask-composite` was not supported or not rendering
+   correctly in the user's Chrome version. Same white screen result.
+
+3. **Approach 3 - Four independent edge strips:** Created four separate `position: fixed` divs
+   (top/bottom/left/right), each only 3px tall/wide with `overflow: hidden`, containing the
+   spinning conic-gradient pseudo-elements. This eliminated any full-viewport element entirely.
+   **Problem:** The `overflow: hidden` on 3px containers clipped the `filter: blur()` effect
+   completely, making the gradient invisible. The sharp 3px line was too thin to see.
+
+4. **Approach 4 (final) - CSS Houdini `@property` with `border-image`:** Single `position: fixed;
+   inset: 0` div with `background: transparent` and `border: 3px solid transparent`. The gradient
+   is applied via `border-image: conic-gradient(from var(--siri-angle), ...) 1` and the angle is
+   animated using `@property --siri-angle`. A `::before` pseudo with the same gradient + blur
+   provides the glow. **This worked** because `border-image` only paints on the border area,
+   the background stays transparent, and the Houdini `@property` enables smooth angle animation.
+
+**Additional issue - Flask template caching:** After fixing the CSS, the server continued serving
+the old template with white backgrounds. Required full server restart (`pkill -f "python.*app.py"`)
+to clear the Jinja2 template cache. Multiple restart attempts were needed due to zombie processes
+on port 5000.
+
+**Additional issue - Animation not stopping:** Initially `hideDeviceModal()` did not call
+`hideSiriAnimation()`, so the glow played indefinitely after device detection even when the
+modal was closed. Fixed by adding `hideSiriAnimation()` to all modal dismiss paths.
 
 ## 📋 Requirements
 
