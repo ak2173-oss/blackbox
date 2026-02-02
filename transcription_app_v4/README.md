@@ -38,6 +38,15 @@
 - ✅ **HH:MM:SS Time Format** - All timestamps and durations display as 00:00:00
 - ✅ **Improved Date Format** - Project dates shown as 28-Jan-2026 style
 - ✅ **PLAUD-style Dark UI** - Clean black/gray accent theme
+- ✅ **Siri-style Border Glow** - iOS 18-inspired animated conic-gradient border glow on device detection
+
+### Siri Border Glow - Technical Details
+The border glow animation uses CSS Houdini (`@property --siri-angle`) to animate a `conic-gradient` applied via `border-image`. Colors cycle through pink (`#f652bb`), blue (`#0855ff`), purple (`#5f2bf6`), and orange (`#ec882d`). A blurred `::before` pseudo-element provides a soft outer glow. The animation:
+- **Triggers** when USB recorder is detected (auto or manual scan)
+- **Persists** while the import modal is open and during file processing
+- **Fades out** (0.6s transition) when the modal closes, device disconnects, or import completes
+- Uses `pointer-events: none` and `z-index: 9999` so it never blocks interaction
+- Implemented in `templates/index.html` via `showSiriAnimation()` / `hideSiriAnimation()` JS functions
 
 ## 📋 Requirements
 
