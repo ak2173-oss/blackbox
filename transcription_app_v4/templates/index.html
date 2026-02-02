@@ -32,6 +32,42 @@
         /* Smooth transitions */
         .nav-item { transition: all 0.15s ease; }
         .table-row { transition: background-color 0.15s ease; }
+
+        /* Siri-style border glow animation using animated border-image */
+        @property --siri-angle {
+            syntax: '<angle>';
+            initial-value: 0deg;
+            inherits: false;
+        }
+        @keyframes siri-spin {
+            to { --siri-angle: 360deg; }
+        }
+        #siri-glow {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            pointer-events: none;
+            border: 3px solid transparent;
+            background: transparent;
+            border-image: conic-gradient(from var(--siri-angle), #f652bb, #0855ff, #5f2bf6, #ec882d, #f652bb) 1;
+            animation: siri-spin 3s linear infinite;
+            opacity: 0;
+            transition: opacity 0.6s ease;
+        }
+        #siri-glow.active {
+            opacity: 1;
+        }
+        /* Soft outer glow via box-shadow on each side */
+        #siri-glow::before {
+            content: '';
+            position: absolute;
+            inset: -3px;
+            border: 3px solid transparent;
+            border-image: conic-gradient(from var(--siri-angle), #f652bb, #0855ff, #5f2bf6, #ec882d, #f652bb) 1;
+            animation: siri-spin 3s linear infinite;
+            filter: blur(15px);
+            opacity: 0.5;
+        }
     </style>
 </head>
 <body class="bg-white text-gray-900 font-sans antialiased">
@@ -321,6 +357,18 @@
         }
 
         // =====================================================================
+        // Siri-style Border Glow Animation
+        // =====================================================================
+
+        function showSiriAnimation() {
+            document.getElementById('siri-glow').classList.add('active');
+        }
+
+        function hideSiriAnimation() {
+            document.getElementById('siri-glow').classList.remove('active');
+        }
+
+        // =====================================================================
         // USB Device Detection & Batch Import
         // =====================================================================
 
@@ -354,6 +402,7 @@
                     deviceConnected = true;
                     deviceFiles = data.files || [];
                     updateDeviceIndicator(true);
+                    showSiriAnimation();
                     renderFileList();
                     showDeviceModal();
                 } else {
@@ -379,11 +428,13 @@
                 if (data.connected && !deviceConnected && !importInProgress) {
                     // Device just connected - show modal
                     deviceConnected = true;
+                    showSiriAnimation();
                     await loadDeviceFiles();
                     showDeviceModal();
                 } else if (!data.connected && deviceConnected) {
                     // Device disconnected
                     deviceConnected = false;
+                    hideSiriAnimation();
                     hideDeviceModal();
                 }
             } catch (error) {
@@ -408,6 +459,7 @@
 
         function hideDeviceModal() {
             document.getElementById('deviceModal').classList.add('hidden');
+            hideSiriAnimation();
         }
 
         function renderFileList() {
@@ -509,6 +561,7 @@
                 } else {
                     // Import complete
                     importInProgress = false;
+                    hideSiriAnimation();
                     showImportComplete(status);
                 }
             } catch (error) {
@@ -609,6 +662,7 @@
             document.getElementById('fileSelectionView').classList.remove('hidden');
             document.getElementById('importProgressView').classList.add('hidden');
             document.getElementById('importCloseBtn').classList.add('hidden');
+            hideSiriAnimation();
             hideDeviceModal();
         }
 
@@ -622,9 +676,12 @@
         checkDeviceStatus(); // Initial check
     </script>
 
+    <!-- Siri-style Border Glow -->
+    <div id="siri-glow"></div>
+
     <!-- Device Detection Modal -->
-    <div id="deviceModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
-        <div class="flex items-center justify-center min-h-screen px-4">
+    <div id="deviceModal" class="hidden fixed inset-0 z-50 overflow-y-auto" style="background:transparent">
+        <div class="flex items-center justify-center min-h-screen px-4" style="background:transparent">
             <!-- Backdrop -->
             <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onclick="hideDeviceModal()"></div>
 
