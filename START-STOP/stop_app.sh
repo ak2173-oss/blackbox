@@ -1,8 +1,8 @@
 #!/bin/bash
-# Stop Transcription App v2
+# Stop Transcription App
 
 echo "================================================================"
-echo " TRANSCRIPTION HUB V2 - SHUTDOWN"
+echo " TRANSCRIPTION APP - SHUTDOWN"
 echo "================================================================"
 echo ""
 

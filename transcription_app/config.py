@@ -51,7 +51,7 @@ class Config:
     OLLAMA_FALLBACK_MODEL = os.getenv('OLLAMA_FALLBACK_MODEL', 'llama3.1:8b')
     OLLAMA_TIMEOUT = int(os.getenv('OLLAMA_TIMEOUT', 180))  # 3 minutes
     OLLAMA_TEMPERATURE = float(os.getenv('OLLAMA_TEMPERATURE', 0.7))
-    OLLAMA_CONTEXT_LENGTH = int(os.getenv('OLLAMA_CONTEXT_LENGTH', 8192))  # 8K default
+    OLLAMA_CONTEXT_LENGTH = int(os.getenv('OLLAMA_CONTEXT_LENGTH', 32768))  # 32K default
 
     # Speaker detection
     SPEAKER_GAP_THRESHOLD = float(os.getenv('SPEAKER_GAP_THRESHOLD', 2.0))  # seconds

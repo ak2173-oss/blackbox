@@ -1,15 +1,15 @@
 #!/bin/bash
-# Start Transcription App v2 with GPU-accelerated Ollama
+# Start Transcription App with GPU-accelerated Ollama
 
 set -e  # Exit on error
 
 echo "================================================================"
-echo " TRANSCRIPTION HUB V2 - STARTUP"
+echo " TRANSCRIPTION APP - STARTUP"
 echo "================================================================"
 echo ""
 
 # Navigate to app directory
-cd /mnt/c/Users/Agneya/Dev/blackbox/transcription_app_v2
+cd /mnt/c/Users/Agneya/Dev/blackbox/transcription_app
 
 # Kill any existing processes
 echo "🧹 Cleaning up existing processes..."
